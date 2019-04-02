@@ -1,0 +1,27 @@
+   32位CPU所含有的寄存器有：
+4个数据寄存器(EAX、EBX、ECX和EDX)
+数据寄存器主要用来保存操作数和运算结果等信息，从而节省读取操作数所需占用总线和访问存储器的时间。
+
+2个变址和指针寄存器(ESI和EDI) 2个指针寄存器(ESP和EBP)
+2位CPU有2个32位通用寄存器EBP和ESP。其低16位对应先前CPU中的SBP和SP，对低16位数据的存取，不影
+响高16位的数据。
+寄存器EBP、ESP、BP和SP称为指针寄存器(Pointer Register)，主要用于存放堆栈内存储单元的偏移量，
+用它们可实现多种存储器操作数的寻址方式，为以不同的地址形式访问存储单元提供方便。
+指针寄存器不可分割成8位寄存器。作为通用寄存器，也可存储算术逻辑运算的操作数和运算结果。
+它们主要用于访问堆栈内的存储单元，并且规定：
+BP为基指针(Base Pointer)寄存器，用它可直接存取堆栈中的数据；
+SP为堆栈指针(Stack Pointer)寄存器，用它只可访问栈顶。
+
+6个段寄存器(ES、CS、SS、DS、FS和GS)
+CS——代码段寄存器(Code Segment Register)，其值为代码段的段值；
+DS——数据段寄存器(Data Segment Register)，其值为数据段的段值；
+ES——附加段寄存器(Extra Segment Register)，其值为附加数据段的段值；
+SS——堆栈段寄存器(Stack Segment Register)，其值为堆栈段的段值；
+FS——附加段寄存器(Extra Segment Register)，其值为附加数据段的段值；
+GS——附加段寄存器(Extra Segment Register)，其值为附加数据段的段值。
+
+1个指令指针寄存器(EIP) 1个标志寄存器(EFlags)
+  指令指针EIP、IP(Instruction Pointer)是存放下次将要执行的指令在代码段的偏移量。
+
+
+http://blog.sina.com.cn/s/blog_87c063060101bcwt.html

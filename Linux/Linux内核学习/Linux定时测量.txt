@@ -1,0 +1,9 @@
+1.所有的PC都包含一个实时时钟（RTC）的时钟，独立于CPU和其所有其他芯片。
+2.jiffies变量是一个计数器，用来记录自系统启动以来产生的节拍总数，32位的变量。
+3.time.h系统介绍
+	1）time_t time(time_t *timer):得到从标准计时点（1970年1月1日）到当前时间的秒数
+	time_t本质就是一个大整数。
+	2）char *ctime(long time)：得到日历时间
+	3）char *asctime(struct tm *ptr):得到机器时间
+	4）double difftime(time_t time2,time_t time1):得到两次机器时间差，单位为秒
+	

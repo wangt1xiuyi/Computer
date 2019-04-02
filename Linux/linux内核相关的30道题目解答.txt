@@ -1,0 +1,961 @@
+嵌入式系统Linux内核开发工程师必须掌握的三十道题 
+    如果你能正确回答以下问题并理解相关知识点原理，那么你就可以算得上是基本合格的Linux内核开发工程师，试试看！
+
+    1) Linux中主要有哪几种内核锁？
+Linux的内核锁主要是自旋锁和信号量。
+自旋锁最多只能被一个可执行线程持有，如果一个执行线程试图请求一个已被争用（已经被持有）的自旋锁，那么这个线程就会一直进行忙循环——旋转——等待锁重新可用。要是锁未被争用，请求它的执行线程便
+能立刻得到它并且继续进行。自旋锁可以在任何时刻防止多于一个的执行线程同时进入临界区。
+
+Linux中的信号量是一种睡眠锁。如果有一个任务试图获得一个已被持有的信号量时，信号量会将其推入等待队列，然后让其睡眠。这时处理器获得自由去执行其它代码。当持有信号量的进程将信号量释放后，在等待
+队列中的一个任务将被唤醒，从而便可以获得这个信号量。信号量的睡眠特性，使得信号量适用于锁会被长时间持有的情况；只能在进程上下文中使用，因为中断上下文中是不能被调度的；另外当代码持有信号量时，
+不可以再持有自旋锁。
+
+2) Linux中的用户模式和内核模式是什么含意？
+linux中内核本身处于内核模式，应用程序处于用户模式。
+内核模式的代码可以无限制地访问所有处理器指令集以及全部内存和I/O空间。如果用户模式的进程要享有此特权，它必须通过系统调用向设备驱动程序或其他内核模式的代码发出请求。另外，用户模式的代码允许
+发生缺页，而内核模式的代码则不允许。
+在2.4和更早的内核中，仅仅用户模式的进程可以被上下文切换出局，由其他进程抢占。除非发生以下两种情况，否则内核模式代码可以一直独占CPU：
+(1) 它自愿放弃CPU；
+(2) 发生中断或异常。
+2.6内核引入了内核抢占，大多数内核模式的代码也可以被抢占。
+3) 怎样申请大块内核内存？
+ 在Linux内核环境下，申请大块内存的成功率随着系统运行时间的增加而减少，虽然可以通过vmalloc系列调用申请物理不连续但虚拟地址连续的内存，但毕竟其使用效率不高且在32位系统上vmalloc的内存地址空间
+有限。所以，一般的建议是在系统启动阶段申请大块内存，但是其成功的概率也只是比较高而已，而不是100%。如果程序真的比较在意这个申请的成功与否，只能退用“启动内存”（Boot Memory）。下面就是申请并
+导出启动内存的一段示例代码： 
+void* x_bootmem = Null;
+EXPORT_SYMBOL(x_bootmem); 
+unsigned long x_bootmem_size = 0;
+EXPORT_SYMBOL(x_bootmem_size); 
+static int __init x_bootmem_setup(char *str)
+{
+   x_bootmem_size = memparse(str, &str);
+   x_bootmem = alloc_bootmem(x_bootmem_size);
+   printk("Reserved %lu bytes from %p for x\n", x_bootmem_size, x_bootmem); 
+   return 1;
+}
+__setup("x-bootmem=", x_bootmem_setup);
+
+可见其应用还是比较简单的，不过利弊总是共生的，它不可避免也有其自身的限制： 内存申请代码只能连接进内核，不能在模块中使用。被申请的内存不会被页分配器和slab分配器所使用和统计，也就是说它处于
+系统的可见内存之外，即使在将来的某个地方你释放了它。一般用户只会申请一大块内存，如果需要在其上实现复杂的内存管理则需要自己实现。在不允许内存分配失败的场合，通过启动内存预留内存空间将是我
+们唯一的选择。
+ 4) 用户进程间通信主要哪几种方式？
+# 管道( pipe )：管道是一种半双工的通信方式，数据只能单向流动，而且只能在具有亲缘关系的进程间使用。进程的亲缘关系通常是指父子进程关系。
+# 有名管道 (named pipe) ： 有名管道也是半双工的通信方式，但是它允许无亲缘关系进程间的通信。
+# 信号量( semophore ) ： 信号量是一个计数器，可以用来控制多个进程对共享资源的访问。它常作为一种锁机制，防止某进程正在访问共享资源时，其他进程也访问该资源。因此，主要作为进程间以及同一进程内
+不同线程之间的同步手段。
+# 消息队列( message queue ) ： 消息队列是由消息的链表，存放在内核中并由消息队列标识符标识。消息队列克服了信号传递信息少、管道只能承载无格式字节流以及缓冲区大小受限等缺点。
+# 信号 ( sinal ) ： 信号是一种比较复杂的通信方式，用于通知接收进程某个事件已经发生。
+# 共享内存( shared memory ) ：共享内存就是映射一段能被其他进程所访问的内存，这段共享内存由一个进程创建，但多个进程都可以访问。共享内存是最快的 IPC 方式，它是针对其他进程间通信方式运行效率低
+而专门设计的。它往往与其他通信机制，如信号两，配合使用，来实现进程间的同步和通信。
+# 套接字( socket ) ： 套解口也是一种进程间通信机制，与其他通信机制不同的是，它可用于不同及其间的进程通信。
+    5) 通过伙伴系统申请内核内存的函数有哪些？
+    6) 通过slab分配器申请内核内存的函数有？
+    7) Linux的内核空间和用户空间是如何划分的（以32位系统为例）？
+Linux将4G的地址划分为用户空间和内核空间两部分。在Linux内核的低版本中（2.0.X），通常0-3G为用户空间，3G-4G为内核空间。这个分界点是可以改动的。 
+正是这个分界点的存在，限制了Linux可用的最大内存为2G.而且要通过重编内核，调整这个分界点才能达到。实际上还可以有更好的方法来解决这个问题。由于内核空间与用户空间互不重合，所以可以用段机制提供的保护功能来保护内核级代码。 
+2.2.X版的内核对此进行了改动。这样内核空间扩张到了4G。从表面上看内核的基地址变为了0，但实际上，内核通常仍在虚址3G以上。 
+用户空间在2.2.X中从直观上变为0-4G，让人迷惑，不是可以直接访问内核了？ 
+其实不然，同过使用页机制提供的保护，阻止了用户程序访问内核空间。
+    8) vmalloc()申请的内存有什么特点？
+    9) 用户程序使用malloc()申请到的内存空间在什么范围？
+K&R 的书第8章最后的部分有论述
+简单的说就是：内存是分散成一些小块的，malloc管理的内存是通过链表的
+方式把这些块串在一起，以这些内存的起始地址排序组织的，相邻的内存块如
+果尾首地址连续，那就把它们合并为一块，当你申请一定大小的内存时
+以first fit模式,在内存链中找第一个大于你需要大小的内存，返回内存指针
+以best fit模式，要遍历整个内存链，找刚好最接近但大于所需要大小的内存
+当然这是出于对内存不浪费的考虑，效率是有损失.释放的话相反，把内存放回
+内存管理链中，可能的话合并相邻的内存碎片。避免内存过于零散
+Linux下malloc函数主要用来在用户空间从heap申请内存，申请成功返回指向所分配内存的指针，申请失败返回NULL。默认情况下，Linux内核使用“乐观的”分配内存策略，首先粗略估计系统可使用的内存数，然后分配内存，但是在使用的时候才真正把这块分配的内存给你。这样一来，即使用malloc申请内存没有返回NULL，你也不一定能完全使用这块内存，特别是在一次或连续多次申请很多内存的时候。
+
+ 
+
+如果一直连续用malloc申请内存，而不真正使用，所申请的内存总数可以超过真正可以使用的内存数。但是当真正使用这块内存，比如用memset或bzero函数一次性把所申请到的大块内存“使用掉”，Linux系统就会Out Of Memory，这个时候OOM Killer就会kill掉用户空间的其他进程来腾出更多可使用内存。
+
+OOM Killer根据OOM score来决定kill哪个进程，OOM score可以看/proc/<PID>/oom_score，score由badness函数计算得出，根据进程运行时间长短，进程优先级，进程所使用的内存数等等。可以通过/proc/<PID>/oom_adj来干预计算socre，这个值的取值范围是-17～15，如果是-17该进程就永远不会被kill（这个可能也和内核版本有关，不见得所有内核版本都支持，得实际试试）。
+
+“默认情况”Linux是这种做的，“默认情况”是指/proc/sys/vm/overcommit_memory为0的时候。这个参数也可以调整，如果为1表示“来着不拒”，只要你malloc过来申请，我啥都不做，立马给你分配内存，这样的话性能就会有大幅度的提高；如果为2表示Linux会精确计算所有可使用的内存和所申请的内存，如果所申请的超过的可使用的内存数就返回NULL。可使用的内存值计算方法，虚拟内存（swap）+ /proc/sys/vm/overcommit_memory（百分比） × 物理内存。/proc/sys/vm/overcommit_memory默认值为50,计算起来就是50%的物理内存数。
+
+Linux自身内核会占一部分内存，还有buffer/cache所占用的内存，所以实际上能被malloc申请后使用的内存并非物理内存大小，demsg的输出里面包含了相关信息（如果看不到，可能是被别的信息冲掉了，重启系统，在系统起来后马上看）：
+Memory: 2071220k/2097152k available (2122k kernel code, 24584k reserved, 884k data, 228k init, 1179584k highmem)
+    10) 在支持并使能MMU的系统中，Linux内核和用户程序分别运行在物理地址模式还是虚拟地址模式？
+    11) ARM处理器是通过几级也表进行存储空间映射的？
+    12) Linux是通过什么组件来实现支持多种文件系统的？
+    13) Linux虚拟文件系统的关键数据结构有哪些？（至少写出四个）
+    14) 对文件或设备的操作函数保存在那个数据结构中？
+    15) Linux中的文件包括哪些？
+我们在Linux中常用的文件系统主要有ext3、ext2及reiserfs。Linux目前几乎支持所有的Unix类的文件系统，除了我们在安装Linux操作系统时所要选择的ext3、reiserfs和ext2外，还支持苹果MACOS的HFS，也支持其它Unix操作系统的文件系统，比如XFS、JFS、Minix fs 及UFS等，您可以在kernel的源码中查看；如果您想要让系统支持哪些的文件系统得需要把该文件系统编译成模块或置入内核；
+当然Linux也支持Windows文件系统NTFST和fat，但不支持NTFS文件系统的写入；支持fat文件系统的读写。现在还有新的ext4文件系统。
+    16) 创建进程的系统调用有那些？
+创建进程的调用：
+启动新进程：int system(const char *string)  【include<stdlib.h>】
+替换进程映像：int execl（）；int execlv（）；int execlp（）
+              int execv();execvp();int execve() 【include<unistd.h>】
+复制进程 fork
+
+
+    17) 调用schedule()进行进程切换的方式有几种？
+    18) Linux调度程序是根据进程的动态优先级还是静态优先级来调度进程的？ 
+三、调度策略
+1. 进程优先级
+(1) 优先级的计算
+前面已经说过，优先级由两部分构成，一是静态优先级static_prio，一是动态优先
+级prio。静态优先级在进程创建的时候就被赋值，并且不变（除非用系统调用改变进
+程的nice值）；而进程的动态优先级则是跟static_prio和sleep_avg有关。对于实时
+进程的优先级在创建的时候就确定了，而且一旦确定以后就不再改变，所以下面部分
+仅对于非实时进程而言。具体的计算由函数effecitve_prio()（kernel/sched.c）完
+成。
+函数将进程的sleep_avg映射成范围是-MAX_BONUS/2 ~ MAX_BONUS/2的变量bonus，而
+MAX_BONUS是等于 ，可见sleep_avg仅能影响的优先级范围在-5 ~ 5之间。具体的映
+射是由以下规则完成的：
+      那么进程的动态优先级就等于： （当然必须在MAX_RT_PRIO和MAX_PRIO-1之间
+）。可见，sleep_avg和bonus是一个线性关系。进程的sleep_avg越大，bonus越大，
+从而进程的动态优先级也就越高。
+(2) 何时计算优先级
+计算进程的动态优先级一般调用两个函数，一个是effective_prio()，一个是
+recalc_task_prio()。函数recalc_task_prio ()先要根据进程被唤醒前的状态
+（即actived）、interactive_credit等来计算进程的sleep_avg
+（详见"平均等待时间sleep_avg"一节），在最后调用effective_prio()来计算函数
+的动态优先级。总的来说，有以下几种情况需要计算进程的优先级：
+a. 创建新进程，使用函数effective_prio()（因为此时进程尚未进行调度，没有
+sleep_avg和interactive_credit可言）；
+b. 唤醒等待进程时，使用函数recalc_task_prio ()来计算进程动态优先级。
+c. 进程用完时间片以后，被重新插入到active array或者expired array的时候需要
+重新计算动态优先级，以便将进程插入到队列的相应位置。此时，使用函数
+effective_prio()；
+d. 其他情况，如IDLE进程初始化等时候。
+2. 进程时间片
+(1) 时间片的计算
+进程的时间片time_slice是基于进程静态优先级的，静态优先级越高（值越小），时
+间片就越大。计算时间片是同过函数task_timeslice()（kernel/sched.c）来完成的
+MAX_BONUS是等于 ，可见sleep_avg仅能影响的优先级范围在-5 ~ 5之间。具体的映
+射是由以下规则完成的：
+      那么进程的动态优先级就等于： （当然必须在MAX_RT_PRIO和MAX_PRIO-1之间
+）。可见，sleep_avg和bonus是一个线性关系。进程的sleep_avg越大，bonus越大，
+从而进程的动态优先级也就越高。
+(2) 何时计算优先级
+计算进程的动态优先级一般调用两个函数，一个是effective_prio()，一个是
+recalc_task_prio()。函数recalc_task_prio ()先要根据进程被唤醒前的状态
+（即actived）、interactive_credit等来计算进程的sleep_avg
+（详见"平均等待时间sleep_avg"一节），在最后调用effective_prio()来计算函数
+的动态优先级。总的来说，有以下几种情况需要计算进程的优先级：
+a. 创建新进程，使用函数effective_prio()（因为此时进程尚未进行调度，没有
+sleep_avg和interactive_credit可言）；
+b. 唤醒等待进程时，使用函数recalc_task_prio ()来计算进程动态优先级。
+c. 进程用完时间片以后，被重新插入到active array或者expired array的时候需要
+重新计算动态优先级，以便将进程插入到队列的相应位置。此时，使用函数
+effective_prio()；
+d. 其他情况，如IDLE进程初始化等时候。
+2. 进程时间片
+(1) 时间片的计算
+进程的时间片time_slice是基于进程静态优先级的，静态优先级越高（值越小），时
+间片就越大。计算时间片是同过函数task_timeslice()（kernel/sched.c）来完成的
+。该函数也是使用线性映射的方法，将进程优先级[MAX_RT_PRIO, MAX_PRIO-1]映射
+到时间片[MIN_TIMESLICE, MAX_TIMESLICE]范围内。通过优先级来计算时间片的等式
+为：
+timeslice = MIN_TIMESLICE + ((MAX_TIMESLICE - MIN_TIMESLICE) *
+(MAX_PRIO-1- (p)->static_prio) / (MAX_USER_PRIO-1))
+(2) 何时计算时间片
+当就绪进程的所有进程的时间片都是0的时候，许多操作系统（包括旧版本的Linux）
+是使用下面的循环来给进程队列计算时间片的：
+for (each task on the system) {
+        recalculate priority;
+        recalculate timeslice
+}
+这样的循环计算会导致以下问题：
+        循环可能会花很长时间，而且算法的复杂度O(n)；
+        计算过程中必须给进程队列和task_struct上锁，这样可能导致大量的竞争；
+        因为计算时间不可预计，所以可能给实时进程带来问题；
+
+在Kernel 2.6中时间片的计算是分散的，具体的计算既可以用task_timeslice()，也
+可以用其他方法。
+        a. 进程创建时，将父进程的时间片分一半给子进程，同时父进程的时间片减半。
+（详见"sched_fork"一节）；
+        b. 进程用完时间片以后，需要重新计算时间片，并将进程插入到相应的运行
+队列。（详见"scheduler_tick"一节）；
+        c. 进程退出时，根据first_timeslice的值来决定是否将子进程的时间片返
+还给父进程。（详见"退出调度"一节）。
+可见Kernel2.6通过分散计算时间片的办法很好解决了上面循环计算所带来的几个问题。
+3. 平均等待时间sleep_avg
+平均等待时间sleep_avg既决定了进程优先级，又影响了进程交互程度的，因此它是
+Kernel 2.6调度系统里面很复杂的一块。下面将跟踪调度器中sleep_avg的变化情况。
+(1) 进程创建
+当一个进程被创建的时候，父进程的sleep_avg要乘以"PARENT_PENALTY / 100"，子
+进程的sleep_avg要乘以"CHILD_PENALTY / 100"，PARENT_PENALTY=100，而
+CHILD_PENALTY = 95，可见创建以后子进程的sleep_avg要降低，而父进程则不变。
+(2) 进程被唤醒
+当一个进程被唤醒以后，acitvate_task()将调用函数recalc_task_prio()来计算进
+程的sleep_avg，参数是进程的睡眠时间，从而进一步计算进程的动态优先级。计算
+sleep_avg有以下几种可能（当然都需在0 ~ NS_MAX_SLEEP_AVG范围内）：
+a. MAX_SLEEP_AVG - AVG_TIMESLICE
+当用户进程（p->mm）不是由UNINTERRUPTIBLE状态唤醒（p->activated != -1），且
+睡眠时间大于INTERACTIVE_SLEEP(p)，则做此赋值；
+b. 不变
+当用户进程（p->mm）是由UNINTERRUPTIBLE状态唤醒（p->activated == -1），且"
+交互程度"不高（!HIGH_CREDIT(p)），如果原来的sleep_avg已经大于INTERACTIVE_SLEEP
+(p)，则不变（对非自愿睡眠的进程进行惩罚）； 否则见下面一条；
+c. INTERACTIVE_SLEEP(p)
+如果加上此次的睡眠时间后大于INTERACTIVE_SLEEP(p)，则sleep_avg赋值为
+INTERACTIVE_SLEEP(p)；
+d. sleep_avg+sleep_time
+如果以上条件全都不满足，则直接将本次睡眠时间加到sleep_avg上。
+(3) 进程调度过程中
+在schedule()过程中，如果发现优先级最高的程序是刚刚从TASK_INTERRUPTIBLE状态
+被唤醒的进程（actived>0，参见"actived"的定义），那么将调用recalc_task_prio
+()，运算过程与(2)相同，所不同的就是调用时的参数sleep_time是进程在就绪队列
+的等待时间。如果进程不是被中断唤醒的（actived=1），那么sleep_time还将受到
+"(ON_RUNQUEUE_WEIGHT * 128 / 100) / 128"的限制，因为该进程很可能不是交互式
+进程。
+(4) 进程被剥夺CPU使用权
+当进行进程切换的时候，被剥夺CPU使用权的进程的sleep_avg将会被减去进程的运行
+时间run_time（这里的run_time对于交互式进程也有奖励的，详见"交互式进程优先
+"一节），从而保证调度器的公平性。进程运行的时间越长，sleep_avg就越小（底限
+是0），进程的动态优先级也就越低，从而被调度器调度到的机会也就会越小。
+(5) 进程退出
+当一个进程退出时，如果该进程的sleep_avg比父进程要小（也就是运行时间长），
+那么父进程将得到惩罚。具体惩罚的规则为：
+p->parent->sleep_avg = p->parent->sleep_avg / (EXIT_WEIGHT+1) * EXIT_WEIGHT
+ + p->sleep_avg /  (EXIT_WEIGHT + 1);
+父进程的sleep_avg将变为原来的1/( EXIT_WEIGHT+1)，再加上子进程的sleep_avg的
+1/( EXIT_WEIGHT+1)，可见子进程运行的越多，父进程得到的惩罚也就越大。这样也
+是为了保证调度器的公正性。
+4. 交互进程优化
+Kernel 2.6为了增加系统在高负载情况下的交互感受，做了以下三点优化。
+(1) interactive_credit -- 奖励sleep_avg
+interactive_credit是设置在task_struct里面用来标记进程的"交互程度"的，它在
+进程创建时候被置为0，以后随着不同的情况而增加，减少。
+增加
+interactive_credit有两处增1的地方，都在函数recalc_task_prio()里面。
+a. 进程所拥有的内存区域不为空(p->mm!=NULL)，即进程不是内核进程，如果不是从
+ TASK_UNINTERRUPTIBLE状态中被唤醒的（p->activated!=-1），且等待的时间（包
+括在休眠中等待时间和在就绪队列中等待时间）超过了一定限度（sleep_time>
+INTERACTIVE_SLEEP(p)）；此时将interactive_credit增1；
+b. 进程的等待时间大于NS_MAX_SLEEP_AVG了，这种进程很可能是交互进程，所以
+interactive_credit增1。
+减少
+interactive_credit只有一处地方减1，在函数schedule()里面。当进程将要被切换
+出CPU的时候，要计算进程的运行时间run_time，并将进程的sleep_avg进行调整，如
+果调整后的sleep_avg小于0（说明进程的运行时间大于等待时间），而且该进程的
+interactive_credit在HIGH_CREDIT(p)和LOW_CREDIT(p)之间（说明该进程非交互进程），
+则将interactive_credit减1作为对进程的惩罚。
+从上面的分析可以看出，无论interactive_credit如何增减，它都在-(CREDIT_LIMIT
++1) ~ (CREDIT_LIMIT+1)范围内；而且当interactive_credit增大到CREDIT_LIMIT+
+1，即调度器认定该进程为交互进程以后，interactive_credit就不再变化。
+调度器采用宏HIGH_CREDIT()来判断一个进程是否是交互进程，如果是，则该进程将
+得到以下奖励：
+a. 当进程被剥夺CPU使用权时，如果发现该进程是交互进程，则将该进程的运行时间
+减小，run_time /= (CURRENT_BONUS(prev) ? : 1)。即sleep_avg减去的运行时间比
+实际的运行时间要小，从而增加进程的sleep_avg。
+b. 交互式进程在就绪队列上等待的时间也将增加到sleep_avg里面，p->sleep_avg
++= sleep_time；从而增加进程的sleep_avg。
+可见，对于交互进程都是奖励sleep_avg的，从而达到提高优先级的目的。对于交互
+式进程，调度器并没有在时间片上进行奖励，而是在优先级上进行奖励，是因为交互
+式进程通常是运行时间短、睡眠时间长，而且要求响应快，而奖励优先级可以给交互
+进程更多的运行机会，因此，调度器对于交互进程的奖励办法是非常公平和科学的。
+
+(2) 平均等待时间sleep_avg -- 奖励动态优先级
+在"平均等待时间"一节已做详细介绍。对于交互进程来说，因为它睡眠的时间较长，
+所以sleep_avg要大一些。另外，经常处于TASK_INTERRUPTIBLE状态，而且是被中断
+唤醒的进程最有可能是交互进程，而这种进程的衡量因素也是sleep_avg。
+总之，由于交互进程一般sleep_avg较大，所以调度器通过奖励动态优先级的方式来
+使得进程获得更多执行的机会。
+ (3) TASK_INTERACTIVE() -- 奖励再次被插入active array
+这个宏是根据进程的动态优先级和静态优先级来判断该进程的"交互程度"。在进程时
+间片用完时，使用这个宏作为一个参考因素来决定是否将进程重新插入active array
+。它的定义是：
+(p)->prio <= (p)->static_prio - DELTA(p)
+DELTA(p) =      (SCALE(TASK_NICE(p), 40, MAX_BONUS) + INTERACTIVE_DELTA)
+SCALE(v1,v1_max,v2_max) = (v1) * (v2_max) / (v1_max)
+可以看出这个宏是将进程的动态优先级和进程的静态优先级做比较，以判断nice值为
+n（静态优先级）时，进程p需要多大的动态优先级才能具有"足够的交互性"。从宏的
+定义可以看出当进程的nice值大于12时，进程是不可能被认为是具有足够的交互性（
+因为nice>12时，DELTA(p)>5，而由于sleep_avg给进程带来的动态优先级上的奖励最
+大只有5，所以TASK_INTERACTIVE(p)永假）；当进程的nice值为-20时，进程的sleep_avg
+必须非常小才可能使得TASK_INTERACTIVE(p)值为假。
+
+从以上分析可以看出，这三种奖励办法一个比一个奖励力度大，奖励条件也一个比一
+个苛刻。而且调度器将用户的意愿放在了第一位（因为nice值是可以通过系统调用改
+变的），由于用户的意愿而给予的奖励（再次被插入active array）最大，而调度器
+所给予的奖励占的比例并不大。
+
+
+
+    19) 进程调度的核心数据结构是哪个？
+1 进程的优先级
+
+每个普通进程都有它自己的静态优先级，位于task_struct的static_prio字段，调度程序使用静态优先级来估价系统中这个进程与其它普通 进程之间调度强度。但是，注意，调度程序不是根据静态优先级来决定调度哪个进程的，而是动态优先级，后面会详细谈到。内核用100（最高优先级）到 139（最低优先级）的整数表示普通进程的静态优先级 。注意，值越大静态优先级就越低。
+
+新进程总是继承其父进程的静态优先级。不过，通过系统调用nice()和setprioritry()，用户可以改变自己拥有的进程的静态优先级。
+
+进程静态优先级本质上决定了进程的基本时间片，即进程用完了以前的时间片，系统分配给进程的时间片长度 。静态优先级和基本时间片的关系用下列公式确定：
+
+
+
+进程的基本时间片实现函数为task_timeslice：
+static inline unsigned int task_timeslice(struct task_struct *p)
+{
+return static_prio_timeslice(p->static_prio);
+}
+static unsigned int static_prio_timeslice(int static_prio)
+{
+if (static_prio < NICE_TO_PRIO(0)) //静态优先级小于120
+return SCALE_PRIO(DEF_TIMESLICE * 4, static_prio); //(140-static_prio)*20
+else
+return SCALE_PRIO(DEF_TIMESLICE, static_prio);//(140-static_prio)*5
+}
+#define NICE_TO_PRIO(nice)    (MAX_RT_PRIO + (nice) + 20)
+#define MAX_USER_RT_PRIO    100
+#define MAX_RT_PRIO        MAX_USER_RT_PRIO
+
+我们看到，静态优先级越高，其基本时间片就越长。最后的结果是，与优先级低的进程相比，通常优先级较高的进程获得更长的CPU时间片。
+
+普通进程除了静态优先级，还有动态优先级，其值的范围也是是100（最高优先级MAX_RT_PRIO，低于100就成了实时进程了 ）到139（最低优先级MAX_PRIO）。动态优先级是调度程序选择新进程来运行的时候使用的数。它与静态优先级的关系用下面的所谓经验公式（empirical formula）表示：
+
+动态优先级 = max (100, min (静态优先级 - bonus + 5, 139))   (2)
+
+动态优先级的计算主要由 effect_prio() 函数完成，该函数实现相当简单，从中可见非实时进程的优先级仅决定于静态优先级（static_prio）和进程的平均睡眠时间（sleep_avg）两 个因素，而实时进程的优先级实际上是在sched_setscheduler() 中设置的（详见"实时进程调度系统"博文，以下仅考虑非实时进程），且一经设定就不再改变。
+
+动态优先级的计算函数是effective_prio，函数effective_prio()读current的static_prio和sleep_avg字段，并根据前面的公式计算出进程的动态优先级：
+
+static int effective_prio(struct task_struct *p)
+{
+p->normal_prio = normal_prio(p);//首先计算出普通进程的优先级，存放在task_struct的normal_prio字段
+if (!rt_prio(p->prio))
+return p->normal_prio;
+return p->prio; //如果是实时进程，优先级不变
+}
+
+static inline int normal_prio(struct task_struct *p)
+{
+int prio;
+if (has_rt_policy(p))
+prio = MAX_RT_PRIO-1 - p->rt_priority;
+else
+prio = __normal_prio(p);
+return prio;
+}
+#define rt_prio(prio)        unlikely((prio) < MAX_RT_PRIO) //prio小于100就是实时进程
+static inline int __normal_prio(struct task_struct *p)
+{//执行该函数的前提是非实时进程
+int bonus, prio;
+bonus = CURRENT_BONUS(p) - MAX_BONUS / 2;
+prio = p->static_prio - bonus;
+if (prio < MAX_RT_PRIO)  // MAX_RT_PRIO的值为100
+prio = MAX_RT_PRIO;  // 不能让你普通进程的优先级高于实时进程
+if (prio > MAX_PRIO-1)   // MAX_PRIO的值为140
+prio = MAX_PRIO-1;   // 不能超过最大优先级139
+return prio;
+}
+
+动态优先级算法的实现关键在 sleep_avg 变量上，在effective_prio() 中，sleep_avg 的范围是 0~MAX_SLEEP_AVG，经过以下公式转换后变成-MAX_BONUS/2~MAX_BONUS/2 之间的 bonus：
+bonus = (NS_TO_JIFFIES((p)->sleep_avg) * MAX_BONUS / MAX_SLEEP_AVG) - MAX_BONUS/2
+#define MAX_BONUS        (MAX_USER_PRIO * PRIO_BONUS_RATIO / 100)
+#define MAX_USER_PRIO        (USER_PRIO(MAX_PRIO))
+#define USER_PRIO(p)        ((p) - MAX_RT_PRIO)
+#define MAX_RT_PRIO        MAX_USER_RT_PRIO
+#define MAX_USER_RT_PRIO    100
+.........弄得那么复杂，其实MAX_BONUS是定值10，MAX_SLEEP_AVG也是定值：
+#define MAX_SLEEP_AVG        (DEF_TIMESLICE * MAX_BONUS)
+#define DEF_TIMESLICE        (100 * HZ / 1000)
+
+#define CURRENT_BONUS(p) (NS_TO_JIFFIES((p)->sleep_avg) * MAX_BONUS / MAX_SLEEP_AVG)
+#define NS_TO_JIFFIES(TIME)    ((TIME) / (1000000000 / HZ))
+
+所以bonus与平均睡眠时间sleep_avg成正比。 不管怎么说，sleep_avg 反映了调度系统的两个策略：交互式进程优先和分时系统的公平共享。
+
+bonus（奖赏）是从范围0~10的值，值小于5表示降低动态优先级以惩戒，值大于5表示增加动态优先级以使奖赏。bonus的值依赖于进程的过去情况，与进程的平均睡眠时间有关，也就是说，平均睡眠时间越久，bonus值越大。
+
+那么，什么是平均睡眠时间呢？粗略地讲，平均睡眠时间就是进程在睡眠状态中所消耗的平均纳秒数，其存放在task_struck的sleep_avg字段中。注意，这绝对不是对过去时间的求平均值操作 ，因为TASK_INTERRUPTIBLE 状态和TASK_UNINTERRUPTIBLE状态所计算出的平均睡眠时间是不同的，而且，进程在运行的过程中平均睡眠时间递减。最后，平均睡眠时间永远不会大于1s。
+
+根据CURRENT_BONUS宏，我们可以得到bonus和sleep_avg的对应关系：
+
+平均睡眠时间sleep_avg 
+ bonus 
+ 粒度 
+ 
+大于或等于 0 小于 100 ms 
+ 0
+ 5120
+ 
+大于或等于100 小于200 ms 
+ 1
+ 2560
+ 
+大于或等于200 小于300 ms 
+ 2
+ 1280
+ 
+大于或等于300 小于 400 ms 
+ 3
+ 640
+ 
+大于或等于400 小于 500 ms 
+ 4
+ 320
+ 
+大于或等于500 小于 600 ms 
+ 5
+ 160
+ 
+大于或等于600 小于 700 ms 
+ 6
+ 80
+ 
+大于或等于700 小于 800 ms 
+ 7
+ 40
+ 
+大于或等于800 小于 900 ms 
+ 8
+ 20
+ 
+大于或等于900 小于 1000 ms 
+ 9
+ 10
+ 
+1 秒 
+ 10
+ 10
+ 
+
+平均睡眠时间也被调度程序用来评判一个给定进程是交互式进程还是批处理进程的依据 。如果一个进程满足：
+
+动态优先级 ≤ 3 ×  静态优先级/4 + 28       (3)
+
+那么就看做是交互式进程。 高优先级进程比低优先级进程更容易成为交互式进程。例如，具有最高静态优先级（100）的进程，当他的bonus值超过2，即睡眠超过200ms时，就被看做是交互式进程。判断交互式进程代码的具体实现请参看博文“recalc_task_prio函数 ”。
+
+下面再介绍一些内核调用effective_prio给进程计算优先级的时机（计一般在进程状态发生改变，内核就有可能计算并设置进程的动态优先级）：
+
+a) 创建进程
+
+在copy_process()中，子进程继承了父进程的动态优先级，平分父进程的时间片，并添加到父进程所在的就绪队列中。如果父进程不在任何就绪队列 中（例如它是 IDLE 进程），那么就通过effective_prio() 函数计算出子进程的优先级，而后根据计算结果将子进程放置
+到相应的就绪队列中。
+
+b) 唤醒休眠进程
+
+核心调用 recalc_task_prio() 设置从休眠状态中醒来的进程的动态优先级，再根据优先级放置到相应就绪队列中。
+
+c) 调度到从 TASK_INTERRUPTIBLE 状态中被唤醒的进程
+
+实际上此时调度器已经选定了候选进程，但考虑到这一类型的进程很有可能是交互式进程，因此此时仍然调用 recalc_task_prio() 对该进程的优先级进行修正，修正的结果将在下一次调度时体现。
+
+d) 进程因时间片相关的原因被剥夺 cpu
+
+在 schedule_tick() 中（由定时器中断启动），进程可能因两种原因被剥夺 cpu，一是时间片耗尽，一是因时间片过长而分段。这两种情况都会调用effective_prio() 重新计算优先级，重新入队。
+
+e) 其它时机
+
+这些其它时机包括IDLE 进程初始化（init_idle()）、负载平衡以及修改 nice 值（set_user_nice()）、修改调度策略等主动要求改变优先级的情况。
+
+即使具有较高静态优先级的普通进程获得较大的CPU时间片，也不应该使静态优先级较低的进程无法运行。为了避免饥饿，当一个进程用完它的时间片时，它应该 被还没有用完时间片的低优先级的进程取代。为了实现这种机制，调度程序维持两个不相交的可运行进程集合：活动进程和过期进程。太复杂了是不？别着急，我们 还是从数据结构入手。
+
+2 数据结构
+
+回忆一下前面讲的，系统中有个0号进程的task_struct结构init_task，然后以它打头，系统中每个进程的tasks字段链接在一起形成一 个双向循环链表表。另外，每个CPU有个运行进程链表runqueue（2.6.18内核以后叫做rq，存放在位于kernel/Sched.c中），称 为运行队列。作为Linux2.6调度程序最重要的数据结构，runqueue数据结构存放在runqueues每个CPU变量中，宏this_rq() 产生本地CPU运行队列的地址，而宏cpu_rq(n)产生索引为n的CPU运行队列地址。
+
+struct runqueue {
+spinlock_t lock;
+
+unsigned long nr_running;
+#ifdef CONFIG_SMP
+unsigned long cpu_load;
+#endif
+unsigned long long nr_switches;
+
+unsigned long nr_uninterruptible;
+
+unsigned long expired_timestamp;
+unsigned long long timestamp_last_tick;
+task_t *curr, *idle;
+struct mm_struct *prev_mm;
+prio_array_t *active, *expired, arrays[2];
+int best_expired_prio;
+atomic_t nr_iowait;
+
+#ifdef CONFIG_SMP
+struct sched_domain *sd;
+
+/* For active balancing */
+int active_balance;
+int push_cpu;
+
+task_t *migration_thread;
+struct list_head migration_queue;
+#endif
+};
+
+runqueue数据结构中最重要的字段是与可运行进程的链表相关的字段。系统中的每个可运行进程属于且只属于一个运行队列。只要可运行进程保持在同一个运行队列中，它就只可能在拥有该运行队列的CPU上执行。
+
+运行队列arrays字段是一个包含两个prio_array_t结构的数组。每个数据结构都表示一个可运行进程的集合，并包括140个双向链表头（每个链表对应一个可能的进程优先级）、一个优先级位图和一个集合中所包含的进程数量的计数器：
+struct prio_array {
+unsigned int nr_active;
+unsigned long bitmap[BITMAP_SIZE];
+struct list_head queue[MAX_PRIO];
+};
+
+下图可以看到，runqueue结构的active字段指向arrays中的两个prio_array_t数据结构之一：对应于包含活动进程的可运行进程 的集合。相反，expired字段指向数组中的另一个prio_array_t数据结构：对应于包含过去进程的可运行进程的集合。
+
+
+
+下面简单说一下rq结构中的其他字段的用处：
+
+spinlock_t lock：runqueue 的自旋锁，当需要对 runqueue 进行操作时，仍然应该锁定，但这个锁定操作只影响一个 CPU 上的就绪队列，因此，竞争发生的概率要小多了。
+
+task_t *curr：本 CPU 正在运行的进程。
+
+tast_t *idle：指向本 CPU 的 idle 进程，表示本地CPU的swapper进程，相当于 2.4 中 init_tasks[this_cpu()] 的作用。
+
+int best_expired_prio：记录 expired 就绪进程组中的最高优先级（数值最小）。该变量在进程进入expired 队列的时候保存（schedule_tick()），用途见下面expired_timestamp的解释）。
+
+unsigned long expired_timestamp：当新一轮的时间片递减开始后，这一变量记录着最早发生的进程耗完时间片事件的时间（jiffies 的绝对值，在 schedule_tick() 中赋），它用来表征expired 中就绪进程的最长等待时间。它的使用体现在 EXPIRED_STARVING(rq)宏上。
+
+上面已经提到，每个 CPU 上维护了两个就绪队列，active 和 expired。一般情况下，时间片结束的进程应该从 active 队列转移到 expired 队列中（schedule_tick()），但如果该进程是交互式进程（实时进程FIFO或RR），调度器就会让其保持在active 队列上以提高它的响应速度。这种措施不应该让其他就绪进程等待过长时间，也就是说，如果 expired 队列中的进程已经等待了足够长时间了，即使是交互式进程也应该转移到 expired 队列上来，排空 active。这个阀值就体现在EXPIRED_STARVING(rq) 上：在 expired_timestamp 和 STARVATION_LIMIT都不等于 0 的前提下，如果以下两个条件都满足，则 EXPIRED_STARVING() 返回真：
+·（当前绝对时间 - expired_timestamp） >= （STARVATION_LIMIT * 队列中所有就绪进程总数 + 1），也就是说 expired 队列中至少有一个进程已经等待了足够长的时间；
+·正在运行的进程的静态优先级比 expired 队列中最高优先级要低（best_expired_prio，数值要大），此时当然应该尽快排空 active 切
+换到expired 上来。
+
+struct mm_struct *prev_mm：保 存进程切换后被调度下来的进程（称之为 prev）的 active_mm 结构指针。因为在 2.6 中 prev 的 active_mm 是在进程切换完成之后释放的（mmdrop()），而此时 prev 的 active_mm 项可能为 NULL，所以有必要在runqueue 中预先保留。
+
+unsigned long nr_running：本 CPU 上的就绪进程数，该数值是 active 和 expired 两个队列中进程数的总和，是说明本 CPU 负载情况的重要参数（详见"调度器相关的负载平衡 "）。
+
+unsigned long nr_switches：记录了本 CPU 上自调度器运行以来发生的进程切换的次数。
+
+unsigned long nr_uninterruptible：记录本 CPU 尚处于 TASK_UNINTERRUPTIBLE 状态的进程数，和负载信息有关。
+
+atomic_t nr_iowait：记录本 CPU 因等待 IO 而处于休眠状态的进程数。
+
+unsigned long timestamp_last_tick：本就绪队列最近一次发生调度事件的时间，在负载平衡的时候会用到（见"调度器相关的负载平衡 "）。
+
+task_t *migration_thread：指向本 CPU 的迁移进程。每个 CPU 都有一个核心线程用于执行进程迁移操作（见"调度器相关的负载平衡 "）。
+
+struct list_head migration_queue：需要进行迁移的进程列表（见"调度器相关的负载平衡 "）。
+
+arrays中的两个prio_array_t数据结构的作用会发生周期性的变化：活动进程突然变成过期进程，而过期进程变化为活动进程，调度程序简单地交互运行队列的active和expired字段的内容以完成这种变化。每个进程描述符task_struct都包括几个与调度相关的字段：
+
+
+1) state
+
+进程的状态仍然用 state 表示，不同的是，2.6 里的状态常量重新定义了，以方便位操作：
+/* 节选自[include/linux/sched.h] */
+#define TASK_RUNNING 0
+#define TASK_INTERRUPTIBLE 1
+#define TASK_UNINTERRUPTIBLE 2
+#define TASK_STOPPED 4
+#define TASK_ZOMBIE 8
+#define TASK_DEAD 16
+新增加的TASK_DEAD 指的是已经退出且不需要父进程来回收的进程。
+
+2) timestamp
+
+进程发生调度事件的时间点、时间戳（单位是：纳秒 —— nanosecond，见下）。包括以下几类：
+· 被唤醒的时间（在 activate_task() 中设置）；
+· 被切换下来的时间（schedule()）；
+· 被切换上去的时间（schedule()）；
+· 负载平衡相关的赋值（见"调度器相关的负载平衡"）。
+从这个值与当前时间的差值中可以分别获得"在就绪队列中等待运行的时长"、"运行时长"等与优先级计算相关的信息（见"优化了的优先级计算方法"）。
+
+两种时间单位：系统的时间是以 nanosecond（十亿分之一秒）为单位的，但这一数值粒度过细，大部分核心应用仅能取得它的绝对值，感知不到它的精度。时间相关的核心应用通常围绕 时钟中断进行，在 Linux 2.6 中，系统时钟每1 毫秒中断一次（时钟频率，用 HZ 宏表示，定义为 1000，即每秒中断 1000次），这个时间单位称为一个 jiffie。很多核心应用都是以 jiffies 作为时间单位，例如进程的运行时间片。
+
+jiffies 与绝对时间之间的转换公式如下：
+nanosecond=jiffies*1000000
+
+核心用两个宏来完成两种时间单位的互换：JIFFIES_TO_NS()、NS_TO_JIFFIES()，很多时间宏也有两种形式，例如 NS_MAX_SLEEP_AVG 和
+MAX_SLEEP_AVG。
+
+3) prio
+
+优先级，在 0~MAX_PRIO-1 之间取值（MAX_PRIO 定义为 140），其中 0~MAX_RT_PRIO-1 （MAX_RT_PRIO 定义为100）属于实时进程范围，MAX_RT_PRIO~MX_PRIO-1 属于非实时进程。数值越大，表示进程优先级越小。2.6 中，动态优先级不再统一在调度器中计算和比较，而是独立计算，并存储在进程的 task_struct 中，再通过上面描述的 priority_array 结构自动排序。
+
+4) static_prio
+
+nice 值沿用 Linux 的传统，在 -20 到 19 之间变动，数值越大，进程的优先级越小。nice 是用户可维护的，但仅影响非实时进程的优先级。2.6 内核中不再存储 nice 值，而代之以 static_prio：static_prio = MAX_RT_PRIO + nice + 20（MAX_RT_PRIO=100）。进程初始时间片的大小仅取决于进程的静态优先级， 这一点不论是实时进程还是非实时进程都一样 ，不过实时进程的 static_prio 不参与优先级计算。 
+
+5) activated
+
+表示进程因什么原因进入就绪态，这一原因会影响到调度优先级的计算。activated 有四个值：
+· -1，进程从 TASK_UNINTERRUPTIBLE 状态被唤醒；
+· 0，缺省值，进程原本就处于就绪态；
+· 1，进程从 TASK_INTERRUPTIBLE 状态被唤醒，且不在中断上下文中；
+· 2，进程从 TASK_INTERRUPTIBLE 状态被唤醒，且在中断上下文中。
+activated 初值为 0，在两个地方修改，一是在 schedule() 中，被恢复为 0，另一个就是 activate_task()，这个函数由 try_to_wake_up()
+函数调用，用于激活休眠进程：
+· 如果是中断服务程序调用的 activate_task()，也就是说进程由中断激活，则该进程最有可能是交互式的，因此，置 activated=2；否则置
+activated=1。
+· 如果进程是从 TASK_UNINTERRUPTIBLE 状态中被唤醒的，则activated=-1（在try_to_wake_up()函数中 ）。
+
+6) sleep_avg
+
+进程的平均等待时间（以 nanosecond 为单位），在 0 到 NS_MAX_SLEEP_AVG之间取值，初值为 0，相当于进程等待时间与运行时间的差值。sleep_avg 所代表的含义比较丰富，既可用于评价该进程的"交互程度"，又可用于表示该进程需要运行的紧迫性。这个值是动态优先级计算的关键因子，sleep_avg 越大，计算出来的进程优先级也越高（数值越小）。在博文"recalc_task_prio函数 " 中会详细分析 sleep_avg 的变化过程。
+
+7) policy： 进程的调度类型（SCHED_NORMAL, SCHED_RR, 或 SCHED_FIFO）
+
+8) thread_info->flags：存放TIF_NEED_RESCHED 标志，如果必须调用调度程序，则设置该标志
+
+9) thread_info->cpu：可运行进程所在运行队列的CPU逻辑号
+
+10) run_list：指向进程所属的运行队列链表中的下一个和前一个元素
+
+12) array：指向包含进程运行队列的集合prio_array_t
+
+13) last_ran：最近一次替换本进程的进程切换时间
+
+14) cpus_allowed：能执行进程的CPU的位掩码
+
+15) time_slice：在进程的时间片中还剩余的时钟节拍数
+
+16) first_time_slice：如果进程肯定不会用完其时间片，就把该标志设置为1
+
+17) rt_priority：进程的实时优先级
+
+所有state处于TASK_RUNNING状态的进程，则在运行队列链表中以run_list组成以prio_array[prio]打头的一个进程循环链表。
+
+当新进程被创建的时候，由copy_process()调用的函数sched_fork()用下述方法设置current进程（父进程）和p进程（子进程）的time_slice字段：
+p->time_slice = (current->time_slice + 1) >> 1;
+current->time_slice >>= 1;
+
+由此可以看出，父进程剩余的节拍数被划分成两等分，一份给父进程，另一份给子进程。如果父进程的时间片只剩下一个时钟节拍，则划分操作强行把 current->time_slice重新置为1，然后调用scheduler_tick()递减该字段，从而使 current->time_slice变为0，耗尽父进程的时间片，把父进程移入expired中。
+
+函数copy_process()也初始化子进程描述符中与进程调度相关的几个字段：
+p->first_time_slice = 1;
+p->timestamp = sched_clock( );
+
+因为子进程没有用完它的时间片（如果一个进程在它的第一个时间片内终止或执行新的程序，就把子进程的剩余时间奖励给父进程），所以 first_time_slice标志置为1.用函数sched_clock()所产生的时间戳的值初始化timestamp字段：函数 sched_clock返回被转化成纳秒的64位寄存器TSC的内容。
+
+3 调度程序所使用的函数
+
+调度程序基本依靠下面几个函数来完成调度工作：
+scheduler_tick( )：维持当前最新的time_slice计数器。
+try_to_wake_up( )：唤醒睡眠进程。
+recalc_task_prio( )：更新进程的动态优先级。
+schedule( )：选择要被执行的新进程。
+
+ 
+
+     20) 如何加载、卸载一个模块？
+一、什么是 modules？
+
+　　modules 的字面意思就是模块，在此指的是 kernel modules；简单来说， 一个模块提供了一个功能，如 isofs、minix、nfs、lp 等等。传统来讲，模块化有两个方法解决： 设计者可以把各项功能分离到单独的叫做线程的处理中去， 或者是将内核以包含/排除一些功能的方式重新编译。如果把功能分离到线程中去，那么内核就叫做“微内核”(micro-kernel)，这种解决方法增加了线程间协调工作的通信开销。就象名字暗示的那样，这种解决方案的优点在于内核的大小。
+　　linux的解决方案是包含内核模块，这些模块是可以按需要随时装入和卸下的。 这样做可以使得内核的大小和通信量都达到最小。将模块从内核中独立出来，不必预先『绑』在kernel codes 中。这样做有三种优点： 第一， 将来修改 kernel 时，不必全部重新compile，可节省不少时间；第二， 若需要安装新的 modules ，不必重新 compile kernel，只要插入(通过insmode指令) 对应的 modules 即可；第三，减少内核对系统资源的占用， 内核可以集中精力做最基本的事情，把一些扩展功能都交由modules实现。
+　　模块也可以用来尝试新的内核代码而不需要每次都创建和重激活内核。但是，这样做带来的问题是：使用内核模块通常会轻微的增加性能和内存开支。一个可加载模块肯定会产生更多的代码，这种代码和额外的数据结构会占用更多一点的内存。另外因为间接访问内核资源也让模块的效率轻微降低。
+　　模块化的思想已经被广泛接受，主要的原因在于它可以扩展系统的功能，用户可以灵活的配置系统。Apache也采取了这种功能扩展方式，在本文中主要讨论是内核的模块安装与卸载，Apache模块的安装请参照Apapce的相关文档。
+
+二、如何加载模块？
+
+　　加载内核模块的方法有两种。第一种使用insmod命令手工把它插入到内核。另一个更智能的方法是在需要的时候加载这个模块︰这叫做按需加载（demand loading）。当内核发现需要一个模块的时候，例如当用户安装一个不在内核的文件系统的时候，内核会请求内核守护进程（kerneld）试图加载合适的模块。说到这里就不能不提到内核守护进程kerneld了，它非常的聪明，能够主动的把您需要的modules 自动插入 kernel， 将没用到的 module 从kernel中清退。Kerneld由两个独立的部分构成：一部分工作于linux的内核，负责向daemon发送请求；另一部分工作于系统的用户数据区，负责调入由内核请求指定的modules。若少了这个kerneld，就只能通过手工的方式,用insmode或modeprobe命令进行加载。
+
+三、modules的相关命令介绍
+
+与modules有关的命令有：
+
+lsmod : 列出已经被内核调入的模块 
+insmod : 将某个module插入到内核中 
+rmmod ：将某个module从内核中卸载 
+modprobe：自动根据依赖文件装入模块 
+depmod : 生成依赖文件，告诉modprobe和kerneld要从哪儿调入modules。这个依赖文件就在/lib/modules/kernel版本/modules.dep。 
+Kerneld：负责自动的将模块调入内核和把模块从内核中卸载。 
+
+四、编译一个最小的linux内核
+
+　　模块一般用来支持那些不经常使用的功能。例如，通常情况下你仅使用拨号网络，因此网络功能并不是任何时候都需要的，那么就应该使用可装入的模块来提供这个功能。仅在你进行拨号联接的时候，该模块才被装入。而在你断掉连接的时候它会被自动卸下。这样会使内核使用内存的量最小，减小系统的负荷。
+　　当然，那些象硬盘访问这样时时刻刻都需要的功能，则必须作在内核里。如果你搭一台网络工作站或web服务器，那么网络功能是时刻都需要的， 你就应该考虑把网络功能编译到内核里。另外一个方法是在启动的时候就装入网络模块。这种方法的优点是你不需要重新编译内核。而缺点是网络功能不能特别高效。
+　　按照以上的原则，我们首先列出一张清单，看看 kernel 中哪些选项是非有不可的，也就是说，这些东西是必须被编译到内核中的。将那些非必需的模块剔除到内核以外。
+　　第一个是root所在的硬盘配置。如果您的硬盘是IDE接口，就把 ide 的选项标记下来。如果是SCSI接口，请把您的接口参数及 SCSI id 记标下来。
+　　第二个是选择使用哪一个文件系统。linux的默认文件系统是是 ext2 ， 那么就一定要把它标记下来。如果机器中还其它的操作系统，如win98或windows NT，您还会可能选择FAT32或NTFS的支持，不过后面你可以通过手工加载的方式来加入新的模块支持。
+　　第三个是选择linux所支持的可执行文件格式。这里有两种格式可供选择：1、elf：这是当前linux普遍支持的可执行文件格式，必须编译到内核中 。2、a.out： 这是旧版的linux的可执行文件各函数库的格式， 如果你确认肯定用不到这种格式的可执行文件，那么就可以不把它编译到内核当中。
+　　以上这些内容，是必须要编译到内核中的。其它的内容凡是所有选项中m提示的，都选择m，这样可以通过手工的方式添加该模块。
+
+** Loadable module support**
+Enable loadable module support (CONFIG_MODULES) [Y/n/?]
+Set versioninformation on all symbols for modules (CONFIG_MODVERSIONS) [N/y/?]
+Kernel daemon support (e.g.autoload of modules) (CONFIG_KERNELD) [Y/n/?]
+
+　　分别回答 Y,N,Y 。其中 CONFIG_KERNELD 的 default 值是 N， 所以要注意选择Y。
+　　make config 完后，仍旧是 make dep; make clean。接下来要 make zlilo 或 make zImage。然后 make modules ; make modules_install 。完成之后， 就编译出一个没有调入多余模块的一个“干净的”内核映像文件了。
+
+五、如何手工加载Modules？
+
+　　如果要以手工的方式加载模块, 建议最好使用 modprobe, 因为它可以解决模块之间的依赖性问题，以声卡的部分来说，以sound blaster 为例其总共有以下模块：
+sb 33652 0 (autoclean)
+uart401 6160 0 (autoclean) [sb]
+sound 56492 0 (autoclean) [sb uart401]
+soundcore 2372 5 (autoclean) [sb sound]
+　　这些模块都要加载上来，整个声卡才能工作，而且它们之间是有依赖性关系的。最核心的soundcore必须首先装入, 最后装入sb。但一般人是不知道其先后顺序的。因此， modprobe就是用来解决这个问题用的。
+　　通常我们只要"modprobe sb"它就会自动的找出 sb 用到的所有的模块, 将它们一一的加载进来，故一般使用者就不用去伤脑筋了。
+　　那么内核是怎么知道这些模块间的依赖性关系的呢？原来，在系统启动脚本里有一条'depmod -a'命令，会给系统中的所有可用的模块创建一个依赖关系的列表。而'modprobe module-name'会使用这个列表，在装入指定的模块前先装入那些事先装入的模块。如果在这个从属列表中找不到'module-name'的话，它会给出相应的出错信息。
+　　但若使用 insmod, 它可不会自动完成其它模块的调入。比如说，我们要加入PPP模块，用这个命令：
+
+root/root>insmod ppp
+root/root>
+
+　　如果操作成功，系统出现操作提示符。如果没有成功，可能出现下列信息：
+
+/lib/modules/2.2.10/net/ppp.o: unresolved symbol slhc_init_Rsmp_1ca65fca
+/lib/modules/2.2.10/net/ppp.o: unresolved symbol slhc_compress_Rsmp_cfd3a418
+/lib/modules/2.2.10/net/ppp.o: unresolved symbol slhc_free_Rsmp_b99033d9
+/lib/modules/2.2.10/net/ppp.o: unresolved symbol slhc_toss_Rsmp_a152cec0
+/lib/modules/2.2.10/net/ppp.o: unresolved symbol slhc_remember_Rsmp_07972313
+/lib/modules/2.2.10/net/ppp.o: unresolved symbol slhc_uncompress_Rsmp_3bb36b01
+[root /root]#
+
+　　这说明，PPP模块没有加载成功，错误提示中的unresolved symbol说明， PPP模块所需要的一些模块还没有载入。错误提示第一行的内容是：slhc_init_Rsmp_1ca65fca ，这是哪个模块？这其中可能需要一些经验来做判断，它是以slhc开头的，就试试slhc吧。
+
+root/root>insmod slhc 一切正常，然后我们再加载PPP模块
+root/root>insmod ppp
+root/root>
+
+　　这回没有什么返回信息，说明PPP模块加载成功了。
+
+六、从内存中卸载一个Modules
+
+　　要卸载一个模块，首先用lsmod看看该模块是否确实已经加载上来，然后再做操作。 除此之外，在碰到有依赖关系的模块时，从内核中卸载模块的过程与载入的过程恰好相反，它遵循“first in last out“的准则，即在一系列有依赖关系的模块中， 必须先卸载最后加载进来的模块，最后卸载最先加载进来的模块。比如：如果要用 rmmod 移除正在使用中的模块(如上例，要卸载slhc, 但仍有PPP模块在使用它)会出现错误提示：Device or resource busy 。所以，在将PPP模块从内存中卸载后，才可能将slhc模块从内存中卸载。
+　　总之，在卸载模块时，对于可能出现的模块间依赖性问题，linux会给你提示足够的信息，仔细查看这些信息，是能够为你采取相应的操作并最终解决问题提供帮助的。
+
+
+
+     21) 模块和应用程序分别运行在什么空间？
+     22) Linux中的浮点运算由应用程序实现还是内核实现？《内核实现》
+     23) 模块程序能否使用可链接的库函数？
+     24) TLB中缓存的是什么内容？
+     25) Linux中有哪几种设备？
+    必须先了解Linux所支持的CPU、RAM、显卡等的硬件配备，以免造成无法安装。此外，同时想、需要考虑即将架设的Linux主机的主要用途。
+硬件设备                                               Linux中的代号
+IDE 硬盘                                                /dev/hd[a-d]
+SCSI硬盘       /dev/sd[a-p]
+光 驱        /dev/cdrom
+软 驱        /dev/fd[0-1]
+打印机        /dev/lp[0-2]
+鼠 标        /dev/mouse
+磁 盘        /dev/ht0(IDE)或/dev/st0 (SCSI界面)
+网 卡        /dev/ethn (n由0开始)
+     26) 字符设备驱动程序的关键数据结构是哪个？
+     27) 设备驱动程序包括哪些功能函数？
+一、设备驱动程序的作用
+
+   驱动程序是应用程序和实际设备之间的一个软件层。为用户提供访问设备的机制，而不是提供策略。不带策略的驱动程序典型特征包括：同时支持同步和异步操作，驱动程序能被多次打开（并发使用）。
+
+二、内核功能划分
+    进程管理：负责进程的创建和销毁，进程间的通信，CPU调度
+    内存管理：用来管理内存，内核为每个进程创建一个虚拟地址空间
+    文件系统：内核在没有结构的硬件上构造结构化的文件系统，支持多文件系统
+    设备控制：也就是驱动程序
+    网络功能：负责在应用程序和网络接口之间传递数据包，根据网络活动控制程序的执行。
+
+三、可装载模块
+    在运行时添加模块，linux内核支持好几种模块类型，不只是设备驱动程序
+四、设备和模块的分类
+    字符设备：字符设备是个能够像字符流一样被访问的设备，通常需要实现open close, read,write系统调用，大多数设备只能顺序访问。
+    块设备：块设备可以容纳文件系统。进行i/o操作时块设备只能传输一个或多个完成的块，每块包含512字节或2的更高次幂的数据。与字符设备相比，块设备驱动程序有完全不同的接口。
+    网络接口：网络接口通常是个硬件，也可以是个软件，由于不是面向流的设备，因此将网络接口映射到文件系统中的节点比较困难，而是分配一个唯一的名字（eth0），但这个名字在文件系统中不存在对应的节点。
+    某些模块时通过某种设备的附加层一起空座(usb, scsi)
+   文件系统是软件驱动程序，将底层数据接口映射成高层数据结构也可以在一个模块中实现不同类型的设备驱动程序
+五、安全问题
+
+    内核有安全漏洞，则整个系统有安全漏洞，在正式发行版本中只有授权用户才能装在模块
+尽量避免在驱动中实现安全策略，最好在系统管理员的控制之下，而通常只有特权的用户执行，而相关的安全检查必须由驱动程序本身完成。
+六、版本编号
+    偶数为正式发行的稳定版本
+    技术为开发过程中的一个快照
+一、设置测试系统
+    在2.6内核中构造模块，需要系统中中配置并构造好内核树，先前的版本只需要有一套内核头文件。
+    2.6内核的模块要和内核源码树中的目标文件连接，可得到一个更加健壮的模块加载器。
+二、HelloWord模块
+用到的宏
+module_init
+module_exit
+分别制定了模块和被加载或卸载时内核调用的函数
+MODULE_LICENSE(" " ) 高速内核采用的自由许可证，如果没有，模块装载时会产生抱怨
+printk 类似c库的printf 在内核中模块不能依赖于c库，模块装载后可访问内核的公用符号(包括函数和变量)
+KERN_ALERT 定义消息的优先级 只是个字符串 如<1> 消息的显示位置依赖内核版本，klogd的版本和配置。
+三 核心模块与应用程序的对比
+    模块退出时必须撤销初始化函数所作的一切
+    内核中只能调用作为内核一部分的函数，大多数相关头文件保存在include/linux和include/asm目录中，其他子目录中保存有和特定内核子系统相关的头文件。
+调试方式不同和应用程序不同。
+四、用户控件和内核空间
+    内核模块运行在内核空间，应用程序运行在用户空间
+    操作系统的作用是为应用程序提供一个对计算机硬件的一致视图。
+    操作系统负责程序的独立操作并保护资源不受非法访问。只有cpu能够保护系统软件不受应用程序破坏时不受应用程序破坏时才能完成！
+    在cpu中实现不同的操作模式，不同的级别具有不同的功能，在较低的级别中禁止某些操作。程序代码只能通过有限数目的门来从一个级别切换到另一个级别。unix系统使用两个级别，在x86中使用最高和最低两个级别。
+    unix中在最高级别（也称超级用户态）可运行所有操作，而应用程序运行在最低级别（用户态），处理器控制着对硬件的直接访问以及对内存的非授权访问，两个级别有自己的内存映射，也即自己的地址空间
+当应用程序执行系统调用或被硬件中断刮起，将切换到内核空间，执行系统调用的内核代码运行在进程上下文中，因此能够访问进程地址空间的所有数据。处理中断的内核代码和进程是异步的，与任何一个特定进程无关。
+   模块的两类任务：
+   1、模块中某些函数作为系统调用的一部分
+   2、其它函数负责中断处理
+五、内核中的并发
+    内核代码必须是可重入的。
+    要时刻考虑并发问题
+     28) 如何唯一标识一个设备？
+
+在linux系统中，一切都是文件。所有的硬件设备也都被系统看作是文件，而这些硬件设备文件都存放在/dev目录之下，但是这种设备文件有时候并不能唯一标识某一个硬件，最典型的例子就是那些可移动设备，比如U盘之类，当系统中接入U盘后，可能会将/dev/sda1这个设备名分配给它，但是假如这个U盘又插入到别的系统中了，那么可能它所分配到的设备名就不是/dev/sda1，可能变成了/dev/sdb1。如何让它保持在任何系统中的标识都不变呢？当然是有办法的，那就是UUID唯一性标识。还是以U盘为例，假如有一个U盘分了三个区，每个区都会分配有一个UUID，这个UUID是记录在U盘上的，而不是在某一个系统中，这样就不会出现U盘在不同的系统中设备名不同的问题。 
+
+下面三个命令可以查看UUID号： 
+
+1、ls -l /dev/disk/by-uuid/ 
+
+这个命令可以查看系统中所有具有UUID的设备文件信息 
+
+2. vol_id /dev/sdb1 
+
+查看/dev/sdb1的卷ID，也就是UUID 
+
+3. blkid /dev/sdb1 
+
+查看块设备/dev/sdb1的UUID，像硬盘、U盘、光盘等之类的存储设备都是块设备，都可以用这个命令来查看UUID 
+
+     29) Linux通过什么方式实现系统调用？
+1.linux系统调用的基本原理
+
+　　linux的系统调用形式与POSIX兼容，也是一套C语言函数名的集合。然而，linux系统调用的内部实现方式却与DOC的INT 21H相似，它是经过INT 0X80H软中断进入后，再根据系统调用号分门别类地服务。
+
+　　从系统分析的角度，linux的系统调用涉及4个方面的问题。
+
+　　(1)与系统调用有关的数据结构和函数
+
+　　函数名以“sys_”开头，后跟该系统调用的名字。例如，系统调用fork()的响应函数是sys_fork()(见Kernel/fork.c),exit()的响应函数是sys_exit()(见kernel/fork.c)。
+
+　　文件include/asm/unisted.h为每个系统调用规定了唯一的编号。假设用name表示系统调用的名称，那么系统调用号与系统调用响应函数的关系是：以系统调用号_NR_name作为下标，可找出系统调用表sys_call_table(见
+
+　　arch/i386/kernel/entry.S)中对应表项的内容，它正好 是该系统调用的响应函数sys_name的入口地址。系统调用表sys_call_table记录了各sys_name函数在表中的位 置，共190项。有了这张表，就很容易根据特定系统调用在表中的偏移量，找到对应的系统调用响应函数的入口地址。系统调用表共256项，余下的项是可供用户自己添加的系统调用空间。
+
+　　(2)进程的系统调用命令转换为INT 0x80中断的过程
+
+　　宏定义_syscallN()见include/asm/unisted.h)用于系统调用的格式转换和参数的传递。N取0~5之间的整数。参数个数为N的系统调用由_syscallN()负责格式转换和参数传递。系统调用号放入EAX寄存器，启动INT 0x80 后，规定返回值送EAX寄存器。
+
+　　(3)系统调用功能模块的初始化
+
+　　对系统调用的初始化也就是对INT 0x80的初始化。系统启动时，汇编子程序setup_idt(见arch/i386/kernel/head.S)准备了1张256项的idt表，由 start_kernel()(见 init/main.c),trap_init()(见
+
+　　arch/i386/kernel/traps.c)调用的C语言宏定义
+
+　　set_system_gate(0x80,&system_call)(见include/asm/system.h)设置0x80号软中断的服务程序为 system_call(见
+
+　　arch/i386/kernel/entry.S),system.call就是所有系统调用的总入口。
+
+　　(4)内核如何为各种系统调用服务
+
+　　当进程需要进行系统调用时，必须以C语言函数的形式写一句系统调用命令。该命令如果已在某个头文件中由相应的_syscallN()展开，则用户程序必须包含该文 件。当进程执行到用户程序的系统调用命令时，实际上执行了由宏命令_syscallN()展开的函数。系统调用的参数 由各通用寄存器传递，然后执行INT 0x80，以内核态进入入口地址system_call。
+
+　　(5)ret_from_sys_call
+
+　　以ret_from_sys_call入口的汇编程序段在linux进程管理中起到了十分重要的作用。所有系统调用结束前以及大部分中断服务返回前，都会跳转至此处入口地址。 该段程序不仅仅为系统调用服务，它还处理中断嵌套、CPU调度、信号等事务。
+
+　　2.通过修改内核源代码添加系统调用
+
+　　通过以上分析linux系统调用的过程，将自己的系统调用加到内核中就是一件容易的事情。下面介绍一个实际的系统调用，并把它加到内核中去。要增加的系统调用是：inttestsyscall()，其功能是在控制终端屏幕上显示hello world，执行成功后返回0。
+
+　　1编写inttestsyscall()系统调用
+
+　　编写一个系统调用意味着要给内核增加1个函数，将新函数放入文件kernel/sys.c中。新函数代码如下：
+
+　　asmlingkage sys_testsyscall()
+
+　　{ console_print("hello world\n");
+
+　　return 0;
+
+　　}
+
+　　2连接新的系统调用
+
+　　编写了新的系统调用过程后，下一项任务是使内核的其余部分知道这一程序的存在，然后重建包含新的系统调用的内核。为了把新的函数连接到已有的内核中去， 需要编辑2个文件：
+
+　　1).inculde/asm/unistd.h在这个文件中加入
+
+　　#define_NR_testsyscall 191
+
+　　2).are/i386/kernel/entry.s这个文件用来对指针数组初始化，在这个文件中增加一行：
+
+　　.long SYMBOL_NAME(_sys_tsetsycall)
+
+　　将.rept NR_syscalls-190改为NR_SYSCALLS-191,然后重新奖励和运行新内核。
+
+　　3).使用新的系统调用
+
+　　在保证的C语言库中没有新的系统调用的程序段，必须自己建立其代码如下
+
+　　#inculde
+
+　　_syscall0(int,testsyscall)
+
+　　main()
+
+　　{
+
+　　tsetsyscall();
+
+　　}
+
+　　在这里使用了_syscall0()宏指令，宏指令本身在程序中将扩展成名为syscall()的函数，它在main()函数内部加以调用。在testsyscall()函数中， 预处理程序产生所有必要的机器指令代码，包括用系统调用参数值加载相应的cpu寄存器， 然后执行int 0x80中断指令。
+
+　　3.利用内核模块添加系统调用
+
+　　模块是内核的一部分，但是并没有被编译到内核里面去。它们被分别编译并连接成一组目标文件， 这些文件能被插入到正在运行的内核，或者从正在运行的内核中移走。内核模块至少必须有2个函数：
+
+　　int_module和cleanup_module。第一个函数是在把模块插入内核时调用的;第二个函数则在删除该模块时调用。由于内核模块是内核的一部分，所以能访问所有内核资源。根据对linux系统调用机制的分析，如果要增加系统调用，可以编写自己的函数来实现，然后在sys_call_table表中增加一项，使该项中的指针指向自己编写的函数，就可以实现系统调用。下面用该方法实现在控制终端上打印“hello world” 的系统调用testsyscall()。
+
+　　1)编写系统调用内核模块
+
+　　#inculde(linux/kernel.h)
+
+　　#inculde(linux/module.h)
+
+　　#inculde(linux/modversions.h)
+
+　　#inculde(linux/sched.h)
+
+　　#inculde(asm/uaccess.h)
+
+　　#define_NR_testsyscall 191
+
+　　extern viod *sys_call+table[];
+
+　　asmlinkage int testsyscall()
+
+　　{ printf("hello world\n");
+
+　　return 0;
+
+　　}
+
+　　int init_module()
+
+　　{ sys_call_table[_NR_tsetsyscall]=testsyscall;
+
+　　printf("system call testsyscall() loaded success\n");
+
+　　return 0;
+
+　　}
+
+　　void cleanup_module()
+
+　　{
+
+　　}
+
+　　2)使用新的系统调用#define
+
+　　#define_NR_testsyscall 191
+
+　　_syscall0(int,testsyscall)
+
+　　main()
+
+　　{
+
+　　testsyscall();
+
+　　}
+
+　　3)编译内核模块并插入内核
+
+　　编译内核的命令为：gcc -Wall -02 -DMODULE -D_KERNEL_-C syscall.c
+
+　　-Wall通知编译程序显示警告信息;参数-02 是关于代码优化的设置， 内核模块必须优化;参数-D_LERNEL通知头文件向内核模块提供正确的定义; 参数-D_KERNEL_通知头文件，这个程序代码将在内核模式下运行。编译成功后将生成 syscall.0文件。最后使用insmod syscall.o命令将模块插入内核后即可使用增加的系统调用。
+
+　　比较以上二种方法，笔者认为采用内核模块的方法较好。因为这种方法可省去编译新内核并用新内核重新 启动的麻烦，这一优点对于代码的调试是非常有价值的， 可以节省大量时间。
+
+原文出自【比特网】，转载请保留原文链接：http://soft.chinabyte.com/os/368/11655868.shtml
+     30) Linux软中断和工作队列的作用是什么？
+
+ 
+ 
