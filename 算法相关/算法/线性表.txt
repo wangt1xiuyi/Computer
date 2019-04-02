@@ -1,0 +1,135 @@
+list是一种序列式容器。list容器完成的功能实际上和数据结构中的双向链表是极其相似的，list中的数据元素是通过链表指针串连成逻辑意义上的线性表，也就是list也具有链表的主要优点，即：在链表的任一位置进行元素的插入、删除操作都是快速的。list的实现大概是这样的：list的每个节点有三个域：前驱元素指针域、数据域和后继元素指针域。前驱元素指针域保存了前驱元素的首地址；数据域则是本节点的数据；后继元素指针域则保存了后继元素的首地址。其实，list和循环链表也有相似的地方，即：头节点的前驱元素指针域保存的是链表中尾元素的首地址，list的尾节点的后继元素指针域则保存了头节点的首地址，这样，list实际上就构成了一个双向循环链。由于list元素节点并不要求在一段连续的内存中，显然在list中是不支持快速随机存取的，因此对于迭代器，只能通过“++”或“--”操作将迭代器移动到后继/前驱节点元素处。而不能对迭代器进行+n或-n的操作，这点，是与vector等不同的地方。
+2.1list中的构造函数：
+
+list() 声明一个空列表；
+
+list(n) 声明一个有n个元素的列表，每个元素都是由其默认构造函数T()构造出来的
+
+list(n,val) 声明一个由n个元素的列表，每个元素都是由其复制构造函数T(val)得来的
+
+list(n,val) 声明一个和上面一样的列表
+
+list(first,last) 声明一个列表，其元素的初始值来源于由区间所指定的序列中的元素
+begin()和end()：通过调用list容器的成员函数begin()得到一个指向容器起始位置的iterator，可以调用list容器的 end() 函数来得到list末端下一位置，相当于：int a[n]中的第n+1个位置a[n]，实际上是不存在的，不能访问，经常作为循环结束判断结束条件使用。
+
+push_back() 和push_front()：使用list的成员函数push_back和push_front插入一个元素到list中。其中push_back()从list的末端插入，而 push_front()实现的从list的头部插入。
+empty()：利用empty() 判断list是否为空。
+
+resize()： 如果调用resize(n)将list的长度改为只容纳n个元素，超出的元素将被删除，如果需要扩展那么调用默认构造函数T()将元素加到list末端。如果调用resize(n,val)，则扩展元素要调用构造函数T(val)函数进行元素构造，其余部分相同。
+
+clear()： 清空list中的所有元素。
+
+front()和back()： 通过front()可以获得list容器中的头部元素，通过back()可以获得list容器的最后一个元素。但是有一点要注意，就是list中元素是空的时候，这时候调用front()和back()会发生什么呢？实际上会发生不能正常读取数据的情况，但是这并不报错，那我们编程序时就要注意了，个人觉得在使用之前最好先调用empty()函数判断list是否为空。
+
+assign()：具体和vector中的操作类似，也是有两种情况，第一种是：l1.assign(n,val)将 l1中元素变为n个T(val）。第二种情况是：l1.assign(l2.begin(),l2.end())将l2中的从l2.begin()到l2.end()之间的数值赋值给l1。
+
+交换两个链表(两个重载)，一个是l1.swap(l2); 另外一个是swap(l1,l2)，都可能完成连个链表的交换。
+reverse()：通过reverse()完成list的逆置。
+
+merge()：合并两个链表并使之默认升序(也可改)，l1.merge(l2，greater<int>()); 调用结束后l2变为空，l1中元素包含原来l1 和 l2中的元素，并且排好序，升序。其实默认是升序，greater<int>()可以省略，另外greater<int>()是可以变的，也可以不按升序排列。
+
+insert()：在指定位置插入一个或多个元素(三个重载)：
+l1.insert(l1.begin(),100); 在l1的开始位置插入100。
+l1.insert(l1.begin(),2,200); 在l1的开始位置插入2个100。
+l1.insert(l1.begin(),l2.begin(),l2.end());在l1的开始位置插入l2的从开始到结束的所有位置的元素。
+
+erase()：删除一个元素或一个区域的元素(两个重载)
+l1.erase(l1.begin()); 将l1的第一个元素删除。
+11.(l1.begin(),l1.end()); 将l1的从begin()到end()之间的元素删除
+
+unique() 删除list中重复的元素
+
+sort() 给list排序
+
+#include <iostream>   
+#include <list>   
+  
+using namespace std;   
+typedef list<int> INTLIST;   
+  
+//从前向后显示list队列的全部元素   
+void put_list(INTLIST list, char *name)   
+{   
+    INTLIST::iterator plist;   
+      
+    cout << "The contents of " << name << " : ";   
+    for(plist = list.begin(); plist != list.end(); plist++)   
+        cout << *plist << " ";   
+    cout<<endl;   
+}   
+  
+//测试list容器的功能   
+void main(void)   
+{   
+    //list1对象初始为空   
+    INTLIST list1;   
+    //list2对象最初有10个值为6的元素   
+    INTLIST list2(10,6);   
+    //list3对象最初有3个值为6的元素   
+    INTLIST list3(list2.begin(),--list2.end());   
+      
+    //声明一个名为i的双向迭代器   
+    INTLIST::iterator i;   
+      
+    //从前向后显示各list对象的元素   
+    put_list(list1,"list1");   
+    put_list(list2,"list2");   
+    put_list(list3,"list3");   
+      
+    //从list1序列后面添加两个元素   
+    list1.push_back(2);   
+    list1.push_back(4);   
+    cout<<"list1.push_back(2) and list1.push_back(4):"<<endl;   
+    put_list(list1,"list1");   
+      
+    //从list1序列前面添加两个元素   
+    list1.push_front(5);   
+    list1.push_front(7);   
+    cout<<"list1.push_front(5) and list1.push_front(7):"<<endl;   
+    put_list(list1,"list1");   
+      
+    //在list1序列中间插入数据   
+    list1.insert(++list1.begin(),3,9);   
+    cout<<"list1.insert(list1.begin()+1,3,9):"<<endl;   
+    put_list(list1,"list1");   
+      
+    //测试引用类函数   
+    cout<<"list1.front()="<<list1.front()<<endl;   
+    cout<<"list1.back()="<<list1.back()<<endl;   
+      
+    //从list1序列的前后各移去一个元素   
+    list1.pop_front();   
+    list1.pop_back();   
+    cout<<"list1.pop_front() and list1.pop_back():"<<endl;   
+    put_list(list1,"list1");   
+      
+    //清除list1中的第2个元素   
+    list1.erase(++list1.begin());   
+    cout<<"list1.erase(++list1.begin()):"<<endl;   
+    put_list(list1,"list1");   
+      
+    //对list2赋值并显示   
+    list2.assign(8,1);   
+    cout<<"list2.assign(8,1):"<<endl;   
+    put_list(list2,"list2");   
+      
+    //显示序列的状态信息   
+    cout<<"list1.max_size(): "<<list1.max_size()<<endl;   
+    cout<<"list1.size(): "<<list1.size()<<endl;   
+    cout<<"list1.empty(): "<<list1.empty()<<endl;   
+      
+    //list序列容器的运算   
+    put_list(list1,"list1");   
+    put_list(list3,"list3");   
+    cout<<"list1>list3: "<<(list1>list3)<<endl;   
+    cout<<"list1<list3: "<<(list1<list3)<<endl;   
+      
+    //对list1容器排序   
+    list1.sort();   
+    put_list(list1,"list1");   
+      
+    //结合处理   
+    list1.splice(++list1.begin(), list3);   
+    put_list(list1,"list1");   
+    put_list(list3,"list3");   
+}   

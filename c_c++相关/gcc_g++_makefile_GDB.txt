@@ -1,0 +1,179 @@
+g++常用命令：
+g++ -S     ：只执行到源码到汇编代码的转换
+g++ -c     ：只执行到编译
+创建静态库：ar cr libmymath.a sub.o add.o
+使用静态库：g++ -o main main.cpp -L. -lmymath
+创建动态库：g++ -fPIC -shared -o libmymath.so add.cpp sub.cpp	
+makefile:
+1.clean:
+	rm -f *.o       清理
+2.rebuild:clean main
+                      清理重新编译
+3.变量名为宏替换
+4.make事先定义好了一些变量，分为两种类型，自动变量和预定义变量
+自动变量：指在使用的时候，自动用特定的值替换
+常用的有：
+	$@:当前规则的目标文件
+	$<:当前规则的第一个依赖文件
+	$^:当前规则的所有依赖文件，以逗号分隔
+	$?:规则中日期新于目标文件的所有相关文件列表，逗号隔开
+	$(@D):目标文件的目录名部分
+	$(@F):目标文件的文件名部分
+预定义变量：make内部事先定义好的变量，但是它的值是固定的，并且有些值是为空。
+	$(CC):c编译程序，默认值：cc
+	$(CPP):c预处理程序，默认值：cpp
+	$(RM):文件删除程序，默认值：“rm -f”
+	$(CPPFLAGS):传给c预处理程序第标志，没默认值
+	$(CFLAGS):传给c编译器第标志，没默认值
+GDB调试：
+gdb基本命令：
+file：装入想要调试的可执行文件
+kill:终止正在调试的程序
+list(l):列出产生执行文件的源代码的一部分
+next（n）:执行一行源代码但不进入函数内部
+step:执行一行源代码而且进入函数内部
+run(r)：执行
+quit(q)：退出
+watch(w):监视一个变量的值而不管它何时被改变
+break(b):设置断点，使得程序挂起
+make:使你不能退出gdb就可以重新产生可执行文件
+shell:使你能不离开gdb就执行UNIX shell命令
+whatis:显示变量的简单描述
+ptype:显示变量的定义
+backtrack（bt）:显示函数调用栈
+up:进入上函数调用堆栈的上一级
+down:进入下函数调用堆栈的下一级
+set variable:临时定义一个变量语法为：set variable varname=value(19)
+
+GDB调试coredump，查看堆栈信息
+1. gdb filename core
+filename就是产生core文件的可执行文件，croe就是产生的core文件名
+2.backtrace
+或者
+bt
+打印当前的函数调用栈的所有信息
+3.frame
+f
+n是一个从0开始的整数，是栈中的层编号。比如：frame 0，表示栈顶，frame 1，表示栈的第二层。
+
+up
+表示向栈的上面移动n层，可以不打n，表示向上移动一层。
+
+down
+表示向栈的下面移动n层，可以不打n，表示向下移动一层。
+
+上面的命令，都会打印出移动到的栈层的信息。如果你不想让其打出信息。你可以使用这三个命令：
+select-frame 对应于 frame 命令。
+up-silently 对应于 up 命令。
+down-silently 对应于 down 命令。
+4.查看当前栈层的信息
+frame 或 f
+会打印出这些信息：栈的层编号，当前的函数名，函数参数值，函数所在文件及行号，函数执行到的语句。
+
+info frame
+info f
+这个命令会打印出更为详细的当前栈层的信息，只不过，大多数都是运行时的内内
+地址。比如：函数地址，调用函数的地址，被调用函数的地址，目前的函数是由什么
+样的程序语言写成的、函数参数地址及值、局部变量的地址等等。
+info args
+打印出当前函数的参数名及其值。
+info locals
+打印出当前函数中所有局部变量及其值。
+info catch
+打印出当前的函数中的异常处理信息。
+
+GDB调试多进程：
+需要设置follow-fork-mode(默认值：parent)和detach-on-fork（默认值：on）即可。
+parent                   on               只调试主进程（GDB默认）
+child                    on               只调试子进程
+parent                   off              同时调试两个进程，gdb跟主进程，子进程block在fork位置
+child                    off              同时调试两个进程，gdb跟子进程，主进程block在fork位置
+1）进入gdb调试模式
+2）查看系统默认的follow-fork-mode 和 detach-on-fork：：
+show follow-fork-mode
+show detach-on-fork
+3）设置follow-fork-mode 和 detach-on-fork：
+set follow-fork-mode [parent|child]   
+set detach-on-fork [on|off]
+4）运行程序,查询正在调试的进程： 
+显示GDB调试的所有inferior，GDB会为他们分配ID。其中带有*的进程是正在调试的inferior。
+info inferiors
+5）切换调试的进程：
+inferior <infer number>
+
+
+GDB调试多线程：GDB默认支持调试多线程，跟主线程，子线程block在create thread。
+1.info threads
+显示可以调试的所有线程。gdb会为每个线程分配一个ID（和tid不同），编号一般从1开始。后面的ID是指这个ID。
+2.thread ID
+切换当前调试的线程为指定ID的线程。 
+3.其他 
+break FileName.cpp:LinuNum thread all: 
+所有线程都在文件FileName.cpp的第LineNum行有断点。
+
+thread apply ID1 ID2 IDN command: 
+让线程编号是ID1，ID2…等等的线程都执行command命令。
+
+thread apply all command：所有线程都执行command命令。
+
+set scheduler-locking off|on|step： 
+在调式某一个线程时，其他线程是否执行。在使用step或continue命令调试当前被调试线程的时候，其他线程也是同时执行的，
+如果我们只想要被调试的线程执行，而其他线程停止等待，那就要锁定要调试的线程，只让他运行。
+
+off:不锁定任何线程，默认值。 
+on:锁定其他线程，只有当前线程执行。
+
+step:在step（单步）时，只有被调试线程运行。
+
+set non-stop on/off: 
+当调式一个线程时，其他线程是否运行。
+
+set pagination on/off: 
+在使用backtrace时，在分页时是否停止。
+
+set target-async on/ff: 
+同步和异步。同步，gdb在输出提示符之前等待程序报告一些线程已经终止的信息。而异步的则是直接返回。
+
+show scheduler-locking： 
+查看当前锁定线程的模式
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

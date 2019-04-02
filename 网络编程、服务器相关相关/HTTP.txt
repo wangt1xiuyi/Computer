@@ -1,0 +1,202 @@
+1. http协议是应用层协议，一般建立在tcp协议的基础之上（当然你的实现非要基于udp也是可以的），
+也就是说http协议的数据收发是通过tcp协议的。
+2. http协议也分为head和body两部分，但是我们一般说的html中的和标记不是http协议的头和身体，
+它们都是http协议的body部分。
+3.也就是说http协议由两部分组成：包头和包体，包头与包体之间使用一个\r\n分割，由于http协议包头的每一行都是以\r\n结束，
+所以http协议包头一般以\r\n\r\n结束。
+4.http协议的包体不是必须的，也就是说GET请求一般没有包体。
+5.如果GET请求带参数，那么一般是附加在请求的url后面，参数与参数之间使用&分割。
+6.POST请求带参数，放在了包体
+7.这是协议本身要解决的问题。目前一般有两种方式，第一种方式就是在包头中有个content-Length字段，
+这个字段的值的大小标识了POST数据的长度，上图中55就是数据username=balloonwj%40qq.com&password=iloveyou&appid=otn的长度
+，服务器收到一个数据包后，先从包头解析出这个字段的值，再根据这个值去读取相应长度的作为http协议的包体数据。
+还有一个格式叫做http chunked技术（分块），大致意思是将大包分成小包，
+
+一、版本历史
+1.HTTP/0.9：已过时。只接受 GET 一种请求方法，没有在通讯中指定版本号，且不支持请求头。由于该版本不支持 POST 方法，所以客户端无法向服务器传递太多信息。
+2.HTTP/1.0：这是第一个在通讯中指定版本号的HTTP 协议版本，至今仍被广泛采用，特别是在代理服务器中。
+3.HTTP/1.1：当前版本。持久连接被默认采用，并能很好地配合代理服务器工作。还支持以管道方式同时发送多个请求，以便降低线路负载，提高传输速度。
+4.HTTP/1.1相较于 HTTP/1.0 协议的区别主要体现在：
+1）缓存处理
+2）带宽优化及网络连接的使用
+3）错误通知的管理
+4）消息在网络中的发送
+5）互联网地址的维护
+6）安全性及完整性
+二、消息结构
+1.客户端发送一个HTTP请求到服务器的请求消息包括以下格式：请求行（request line）、请求头部（header）、空行和请求数据四个部分组成，以回车+换行(\r\n)表示行切换，
+连续两个\r\n\r\n表示结束；
+请求行：请求方法 URL 协议版本
+请求头部：头部字段名：值
+常用头部：
+	Content-Type:text/html
+	Content-length:122
+	Agent：curl/7.16....
+	Host:www.example.com
+	Accept-Language:en,mi
+	Connection:Keep-alive;
+2.服务器响应消息结构：状态行、消息报头、空行和响应正文
+状态行：协议版本 状态码 状态码英文
+消息报头：类似于请求报头
+空行
+响应正文
+
+三、请求方法
+根据HTTP标准，HTTP请求可以使用多种请求方法。
+HTTP1.0定义了三种请求方法： GET, POST 和 HEAD方法。
+HTTP1.1新增了五种请求方法：OPTIONS, PUT, DELETE, TRACE ，CONNECT和PATH 方法。
+序号	方法	             描述
+1	    GET	        请求指定的页面信息，并返回实体主体。
+2	    HEAD        类似于get请求，只不过返回的响应中没有具体的内容，用于获取报头
+3	    POST        向指定资源提交数据进行处理请求（例如提交表单或者上传文件）。数据被包含在请求体中。POST请求可能会导致新的资源的建立和/或已有资源的修改。
+4	    PUT	        从客户端向服务器传送的数据取代指定的文档的内容。
+5	    DELETE      请求服务器删除指定的页面。
+6	    CONNECT	    HTTP/1.1协议中预留给能够将连接改为管道方式的代理服务器。
+7	    OPTIONS	    允许客户端查看服务器的性能。
+8	    TRACE	    回显服务器收到的请求，主要用于测试或诊断。
+9           PATH            用来局部修改应用于某一资源
+
+四、响应头信息
+应答头	                                    说明
+Allow	                  服务器支持哪些请求方法（如GET、POST等）。
+Content-Encoding	文档的编码（Encode）方法。只有在解码之后才可以得到Content-Type头指定的内容类型。利用gzip压缩文档能够显著地减少HTML文档的下载时间。
+                    Java的GZIPOutputStream可以很方便地进行gzip压缩，但只有Unix上的 Netscape和Windows上的IE 4、IE 5才支持它。因此，Servlet应该通过查看
+					Accept-Encoding头（即request.getHeader("Accept- Encoding")）检查浏览器是否支持gzip，为支持gzip的浏览器返回经gzip压缩的HTML页面，
+					为其他浏览器返回普通页面。
+Content-Length	    表示内容长度。只有当浏览器使用持久HTTP连接时才需要这个数据。如果你想要利用持久连接的优势，可以把输出文档写入 ByteArrayOutputStram，
+                    完成后查看其大小，然后把该值放入Content-Length头，最后通过 byteArrayStream.writeTo(response.getOutputStream()发送内容。
+Content-Type	    表示后面的文档属于什么MIME类型。Servlet默认为text/plain，但通常需要显式地指定为text/html。由于经常要设置Content-Type，因此
+                    HttpServletResponse提供了一个专用的方法setContentType。 
+Date	            当前的GMT时间。你可以用setDateHeader来设置这个头以避免转换时间格式的麻烦。
+Expires	            应该在什么时候认为文档已经过期，从而不再缓存它
+Last-Modified	    文档的最后改动时间。客户可以通过If-Modified-Since请求头提供一个日期，该请求将被视为一个条件 GET，只有改动时间迟于指定时间的文档才会返回，
+                    否则返回一个304（Not Modified）状态。Last-Modified也可用setDateHeader方法来设置。
+Location	        表示客户应当到哪里去提取文档。Location通常不是直接设置的，而是通过HttpServletResponse的sendRedirect方法，该方法同时设置状态代码为302。
+Refresh	            表示浏览器应该在多少时间之后刷新文档，以秒计。除了刷新当前文档之外，你还可以通过setHeader("Refresh", "5; URL=http://host/path")让浏览器
+                    读取指定的页面。
+					注意这种功能通常是通过设置HTML页面HEAD区的＜META HTTP-EQUIV="Refresh" CONTENT="5;URL=http://host/path"＞实现，这是因为，自动刷新或重定向
+					对于那些不能使用CGI或Servlet的 HTML编写者十分重要。但是，对于Servlet来说，直接设置Refresh头更加方便。
+					注意Refresh的意义是"N秒之后刷 新本页面或访问指定页面"，而不是"每隔N秒刷新本页面或访问指定页面"。因此，连续刷新要求每次都发送一个Refresh头
+					，而发送204状态代码则可 以阻止浏览器继续刷新，不管是使用Refresh头还是＜META HTTP-EQUIV="Refresh" ...＞。 
+					注意Refresh头不属于HTTP 1.1正式规范的一部分，而是一个扩展，但Netscape和IE都支持它。
+Server	            服务器名字。Servlet一般不设置这个值，而是由Web服务器自己设置。
+Set-Cookie	        设置和页面关联的Cookie。Servlet不应使用response.setHeader("Set-Cookie", ...)，而是应使用HttpServletResponse提供的专用方法addCookie。
+                    参见下文有关Cookie设置的讨论。
+WWW-Authenticate	客户应该在Authorization头中提供什么类型的授权信息？在包含401（Unauthorized）状态行的 应答中这个头是必需的。例如，response.setHeader
+                    ("WWW-Authenticate", "BASIC realm=＼"executives＼"")。 注意Servlet一般不进行这方面的处理，而是让Web服务器的专门机制来控制受密码保护页面的
+					访问（例如.htaccess）。
+五、HTTP状态码
+1.下面是常见的HTTP状态码：
+200 - 请求成功
+301 - 资源（网页等）被永久转移到其它URL
+404 - 请求的资源（网页等）不存在
+500 - 内部服务器错误
+2.HTTP状态码由三个十进制数字组成，第一个十进制数字定义了状态码的类型，后两个数字没有分类的作用。HTTP状态码共分为5种类型：
+分类      分类描述
+1**	      信息，服务器收到请求，需要请求者继续执行操作
+2**	      成功，操作被成功接收并处理
+3**	      重定向，需要进一步的操作以完成请求
+4**	      客户端错误，请求包含语法错误或无法完成请求
+5**	      服务器错误，服务器在处理请求的过程中发生了错误
+3.状态码列表
+状态码	         状态码英文名称	                            中文描述
+100	              Continue	                       继续。客户端应继续其请求
+101	           Switching Protocols	          切换协议。服务器根据客户端的请求切换协议。只能切换到更高级的协议，例如，切换到HTTP的新版本协议
+ 
+200	                   OK	                    请求成功。一般用于GET与POST请求
+201	                   Created	                已创建。成功请求并创建了新的资源
+202	                    Accepted	            已接受。已经接受请求，但未处理完成
+203	                Non-Authoritative Information	非授权信息。请求成功。但返回的meta信息不在原始的服务器，而是一个副本
+204	                  No Content	            无内容。服务器成功处理，但未返回内容。在未更新网页的情况下，可确保浏览器继续显示当前文档
+205              	Reset Content	        重置内容。服务器处理成功，用户终端（例如：浏览器）应重置文档视图。可通过此返回码清除浏览器的表单域
+206	               Partial Content	          部分内容。服务器成功处理了部分GET请求
+ 
+300	                Multiple Choices	    多种选择。请求的资源可包括多个位置，相应可返回一个资源特征与地址的列表用于用户终端（例如：浏览器）选择
+301              	Moved Permanently	    永久移动。请求的资源已被永久的移动到新URI，返回信息会包括新的URI，浏览器会自动定向到新URI。今后任何新的请求都应使用新的URI代替
+302	                     Found	           临时移动。与301类似。但资源只是临时被移动。客户端应继续使用原有URI
+303	                      See Other	        查看其它地址。与301类似。使用GET和POST请求查看
+304	                     Not Modified	   未修改。所请求的资源未修改，服务器返回此状态码时，不会返回任何资源。客户端通常会缓存访问过的资源，通过提供一个头信息指出客户端希望只返回在指定日期之后修改的资源
+305	                      Use Proxy	        使用代理。所请求的资源必须通过代理访问
+306	                     Unused	           已经被废弃的HTTP状态码
+307	                   Temporary Redirect	临时重定向。与302类似。使用GET请求重定向
+ 
+400	                   Bad Request          客户端请求的语法错误，服务器无法理解
+401	                  Unauthorized	       请求要求用户的身份认证
+402	                 Payment Required	   保留，将来使用
+403	                     Forbidden	      服务器理解请求客户端的请求，但是拒绝执行此请求
+404	                     Not Found	      服务器无法根据客户端的请求找到资源（网页）。通过此代码，网站设计人员可设置"您所请求的资源无法找到"的个性页面
+405	                 Method Not Allowed	  客户端请求中的方法被禁止
+406                 	Not Acceptable	   服务器无法根据客户端请求的内容特性完成请求
+407	           Proxy Authentication Require 请求要求代理的身份认证，与401类似，但请求者应当使用代理进行授权
+408	                Request Time-out	  服务器等待客户端发送的请求时间过长，超时
+409	                 Conflict	          服务器完成客户端的PUT请求是可能返回此代码，服务器处理请求时发生了冲突
+410	                   Gone          	客户端请求的资源已经不存在。410不同于404，如果资源以前有现在被永久删除了可使用410代码，网站设计人员可通过301代码指定资源的新位置
+411	                   Length Required	服务器无法处理客户端发送的不带Content-Length的请求信息
+412	                  Precondition Failed	客户端请求信息的先决条件错误
+413	                Request Entity Too Large	由于请求的实体过大，服务器无法处理，因此拒绝请求。为防止客户端的连续请求，服务器可能会关闭连接。如果只是服务器暂时无法处理，则会包含一个Retry-After的响应信息
+414	                Request-URI Too Large	请求的URI过长（URI通常为网址），服务器无法处理
+415	               Unsupported Media Type	服务器无法处理请求附带的媒体格式
+416	         Requested range not satisfiable	客户端请求的范围无效
+417	                    Expectation Failed	服务器无法满足Expect的请求头信息
+ 
+500	            Internal Server Error	服务器内部错误，无法完成请求
+501               	Not Implemented	   服务器不支持请求的功能，无法完成请求
+502	                 Bad Gateway	    充当网关或代理的服务器，从远端服务器接收到了一个无效的请求
+503	              Service Unavailable	由于超载或系统维护，服务器暂时的无法处理客户端的请求。延时的长度可包含在服务器的Retry-After头信息中
+504	            Gateway Time-out	   充当网关或代理的服务器，未及时从远端服务器获取请求
+505	     HTTP Version not supported   	服务器不支持请求的HTTP协议的版本，无法完成处理
+
+4.（TSL）SSL四次握手：
+    1.客户端建立SSL链接到服务端，并向服务端发送一个随机数-client random和客户端支持的加密方法（RSA、ECC等公钥加密），明文传输
+    2.服务端回复一种客户端支持的加密算法，一个随机数-server-random、授信的服务器证书（CA）和非对称加密的公钥
+    3.客户端收到服务器的回复后利用服务端的公钥，加上新的随机数-Premaster secret通过服务端下发的公钥及加密方法进行加密，发送给服务器
+    4.服务端收到客户端的回复，利用已知的加解密方式进行解密，同时利用client random、server randomh和Premaster secret通过一定的算法生成HTTP链接数据传输的对称加密key-session key.
+5.cookie和session区别：
+    cookie通俗讲，是访问某些网站后在本地存储的一些网站相关信息，下次访问时减少一些步骤。更准确的说法是：Cookies是服务器在本地机器上存储的小段文本并随每一个请求发送至同一服务器
+，是在客户端保持状态的方案。
+    session存在服务器的一种用来存放用户数据的类HashTable结构。浏览器第一次发送请求时，服务器自动生成了一HashTable和一Session ID来唯一标识这个HashTable，并将其通过响应发送到浏
+览器。浏览器第二次发送请求会将前一次服务器响应中的Session ID放在请求中一并发送到服务器上，服务器从请求中提取出Session ID，并和保存的所有Session ID进行对比，找到这个用户对应的
+HashTable。 
+区别：
+	1.存储数据量方面：session 能够存储任意的 java 对象，cookie 只能存储 String 类型的对象
+	2.一个在客户端一个在服务端。因Cookie在客户端所以可以编辑伪造，不是十分安全。
+	3.Session过多时会消耗服务器资源，大型网站会有专门Session服务器，Cookie存在客户端没问题。	
+	4.域的支持范围不一样，比方说a.com的Cookie在a.com下都能用，而www.a.com的Session在api.a.com下都不能用，解决这个问题的办法是JSONP或者跨域资源共享。
+关于GET、POST的请求长度：
+	HTTP 协议 未规定 GET 和POST的长度限制
+	GET的最大长度显示是因为 浏览器和 web服务器限制了 URI的长度
+	不同的浏览器和WEB服务器，限制的最大长度不一样
+	要支持IE，则最大长度为2083byte，若只支持Chrome，则最大长度 8182byte
+
+1、Apache
+Apache能接受url长度限制为8 192 字符
+2.nginx
+可以通过修改配置来改变url请求串的url长度限制。
+
+
+client_header_buffer_size
+ 默认值：client_header_buffer_size 1k
+
+
+large_client_header_buffers
+默认值 ：large_client_header_buffers 4 4k/8k
+
+
+
+HTTP1.1与HTTP2.0区别：
+  1）HTTP2.0使用了(类似epoll)多路复用的技术，做到同一个连接并发处理多个请求，而且并发请求的数量比HTTP1.1大了好几个数量级。
+  2）HTTP1.1不支持header数据的压缩，HTTP2.0使用HPACK算法对header的数据进行压缩，这样数据体积小了，在网络上传输就会更快。
+  3）当我们对支持HTTP2.0的web server请求数据的时候，服务器会顺便把一些客户端需要的资源一起推送到客户端，免得客户端再次创建
+     连接发送请求到服务器端获取。这种方式非常合适加载静态资源。
+
+
+
+
+
+
+
+
+
+
+
+

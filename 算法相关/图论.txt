@@ -1,0 +1,506 @@
+图论相关算法，最短路径算法。
+牛牛的快递到了，他迫不及待地想去取快递，但是天气太热了，以至于牛牛不想在烈日下多走一步。他找来了你，请你帮他规划一下，他最少要走多少距离才能取回快递。
+输入描述:
+每个输入包含一个测试用例。
+输入的第一行包括四个正整数，表示位置个数N(2<=N<=10000)，道路条数M(1<=M<=100000)，起点位置编号S(1<=S<=N)和快递位置编号T(1<=T<=N)。位置编号从1到N，道路是单向的。数据保证S≠T，
+保证至少存在一个方案可以从起点位置出发到达快递位置再返回起点位置。
+接下来M行，每行包含三个正整数，表示当前道路的起始位置的编号U(1<=U<=N)，当前道路通往的位置的编号V(1<=V<=N)和当前道路的距离D(1<=D<=1000)。
+输出描述:
+对于每个用例，在单独的一行中输出从起点出发抵达快递位置再返回起点的最短距离。
+示例1
+输入
+
+3 3 1 3 
+1 2 3 
+2 3 3 
+3 1 1
+输出
+
+7
+
+1.最短路径算法
+1）Floyd算法
+//多元最短路径算法，实现简单，时间复杂度高（O(n^3)）
+#include<iostream>
+#define inf 9999999 //定义无穷大
+#define N 100       //最大能处理的点个数
+using namespace std;
+int main()
+{
+	int map[N][N];
+	int m, n;
+	cin >> n >> m;//读入点个数和边数
+	for (int i = 1; i <=n; ++i) {
+		for (int j = 1; j <=n; ++j) {
+			if (i == j)
+				map[i][j] = 0;
+			else
+				map[i][j] = inf;
+		}
+	}
+	for (int i = 1; i <= m; ++i) {
+		int u, v, d;
+		cin >> u >> v >> d;
+		map[u][v] = d;
+	}
+	//floyd算法
+	for (int k = 1; k <= n; ++k) {
+		for (int i = 1; i <= n; ++i) {
+			for (int j = 1; j <= n; ++j) {
+				if (map[i][j] > map[i][k] + map[k][j])
+					map[i][j] = map[i][k] + map[k][j];
+			}
+		}
+
+	}
+	//结果输出
+	for (int i = 1; i <= n; ++i) {
+		for (int j = 1; j <= n; ++j) {
+			cout << i << "-->" << j << ":" << map[i][j] << endl;
+		}
+	}
+}
+2）Dijkstra算法（单源最短路径算法）
+求单源最短路径。把图中的点分成两个集合，一个是已求得最短路径的集合，一个是待求得最短路径的集合，每次从待求集合中找到
+最短的边，用这条边去松弛待求集合中的每一条边，直到待求集合中没有元素即已求得集合中都是图中的点时结束，这样单源最短路
+径就出来了
+#include<iostream>
+#define inf 9999999 //定义无穷大
+#define N 100       //最大能处理的点个数
+using namespace std;
+int main()
+{
+	int map[N][N];
+	int m, n;
+	cin >> n >> m;//读入点个数和边数
+	for (int i = 1; i <=n; ++i) {
+		for (int j = 1; j <=n; ++j) {
+			if (i == j)
+				map[i][j] = 0;
+			else
+				map[i][j] = inf;
+		}
+	}
+	for (int i = 1; i <= m; ++i) {
+		int u, v, d;
+		cin >> u >> v >> d;
+		map[u][v] = d;
+	}
+	int *visit = new int[n+1];//保存是否被访问，1为是，0为否
+	for (int i = 1; i <= n; ++i)
+		visit[i] = 0;
+	visit[1] = 1;
+	int *dis = new int[n+1];//保存记录情况
+	for (int i = 1; i <= n; ++i) {
+		dis[i] = map[3][i];
+	}
+	//Dijkstra算法
+	
+	for (int i = 1; i < n; ++i) {
+		int min = inf, index=0;
+		for (int i = 1; i <= n; ++i) {              //从剩余点中找最小边点
+			if (visit[i] == 0 && dis[i]<min) {
+				min = dis[i];
+				index = i;
+			}
+		}
+		if (index != 0)
+		{
+			visit[index] = 1;
+			for (int j = 1; j <= n; ++j) {       //边松弛，找到到目标点的最短距离
+				if (map[index][j] < inf) {
+					if (dis[j] > map[index][j] + dis[index])
+						dis[j] = map[index][j] + dis[index];
+				}
+			}
+		}
+	}
+	//输出结果
+	for (int i = 1; i <= n; ++i) {
+		cout << 1 << "-->" << i << ":" << dis[i] << endl;
+	}
+	delete visit;
+	delete dis;
+}
+堆优化的迪杰斯特拉算法，采用优先队列的bfsbfs实现，每次都队列中找到最短的dis，用对应结点去松弛其他点，把成功松弛过的点又加入到队列，让这些点成为候选的最短dis。由于对领
+接表存储的图进行bfsbfs的时间复杂度为O(n+e)O(n+e)，而优先队列弹出队头元素的时间复杂度为O(logn)O(logn)，由于每一个点都要被弹出队列一次，故堆优化的迪杰斯特拉的时间复杂度为
+O(nlogn)。
+堆优化的dijkstra算法
+#include <iostream>    
+#include <cstdio>    
+#include <queue>    
+#include <vector>    
+using namespace std;    
+const int Ni = 10000;    
+const int INF = 1<<27;    
+struct node{    
+    int x,d;    
+    node(){}    
+    node(int a,int b){x=a;d=b;}    
+    bool operator < (const node & a) const    
+    {    
+        if(d==a.d) return x<a.x;    
+        else return d > a.d;    
+    }    
+};    
+vector<node> eg[Ni];    
+int dis[Ni],n;    
+void Dijkstra(int s)    
+{    
+    int i;    
+    for(i=0;i<=n;i++) dis[i]=INF;    
+    dis[s]=0;    
+    //用优先队列优化    
+    priority_queue<node> q;    
+    q.push(node(s,dis[s]));    
+    while(!q.empty())    
+    {    
+        node x=q.top();q.pop();    
+        for(i=0;i<eg[x.x].size();i++)    
+        {    
+            node y=eg[x.x][i];    
+            if(dis[y.x]>x.d+y.d)    
+            {    
+                dis[y.x]=x.d+y.d;    
+                q.push(node(y.x,dis[y.x]));    
+            }    
+        }    
+    }    
+}    
+int main()    
+{    
+    int a,b,d,m;    
+    while(scanf("%d%d",&n,&m),n+m)    
+    {    
+        for(int i=0;i<=n;i++) eg[i].clear();    
+        while(m--)    
+        {    
+            scanf("%d%d%d",&a,&b,&d);    
+            eg[a].push_back(node(b,d));    
+            eg[b].push_back(node(a,d));    
+        }    
+        Dijkstra(1);    
+        printf("%d\n",dis[n]);    
+    }    
+    return 0;    
+} 
+自己写的：
+#include<iostream>  
+#include<queue>
+#include<vector>
+#define Ni 1000
+#define INF 1<<27
+using namespace std;
+struct node
+{
+	int b, d;
+	node(int x, int val) :b(x), d(val) {}
+	bool operator < (const node &a) const {
+		if (d == a.d) return b < a.b;
+		else
+			return d > a.d;
+	}
+};
+vector<node> edge[Ni];
+int m, n, dis[Ni];
+void Dijkstra(int cur) {
+	for (int i = 0; i < n; ++i)
+		dis[i] = INF;
+	dis[cur] = 0;
+	priority_queue<node> Q;
+	Q.push(node(cur, dis[cur]));
+	while (!Q.empty()) {
+		node q = Q.top();
+		Q.pop();
+		for (int i = 0; i < edge[q.b].size(); ++i) {
+			node y = edge[q.b][i];
+			if (dis[y.b] > y.d + q.d)  //边松弛
+			{
+				dis[y.b] = y.d + q.d;
+				Q.push(node(y.b, dis[y.b]));
+			}
+		}
+	}
+}
+int main() {
+	cin >> n >> m;
+	for (int i = 0; i < n; ++i)
+		edge[i].clear();
+	for (int i = 0; i < m; ++i) {
+		int a, b, d;
+		cin >> a >> b >> d;
+		edge[a].push_back(node(b, d));
+		edge[b].push_back(node(a, d));
+	}
+	Dijkstra(0);
+	for (int i = 0; i < n; ++i) {
+		cout << 0 << "-->" << i << ":" << " " << dis[i] << endl;
+	}
+}   
+Bellman-Ford 最短路径算法（处理含有负权值）
+#include<iostream>  
+#include<cstdio>  
+using namespace std;
+
+#define MAX 0x3f3f3f3f  
+#define N 1010  
+int nodenum, edgenum, original; //点，边，起点  
+
+typedef struct Edge //边  
+{
+	int u, v;
+	int cost;
+}Edge;
+
+Edge edge[N];
+int dis[N], pre[N];//dis保存路径值，pre保存路径
+
+bool Bellman_Ford()
+{
+	for (int i = 1; i <= nodenum; ++i) //初始化  
+		dis[i] = (i == original ? 0 : MAX);
+	for (int i = 1; i <= nodenum - 1; ++i)
+	{
+		for (int j = 1; j <= edgenum; ++j)
+			if (dis[edge[j].v] > dis[edge[j].u] + edge[j].cost) //松弛（顺序一定不能反~）  
+			{
+				dis[edge[j].v] = dis[edge[j].u] + edge[j].cost;
+				pre[edge[j].v] = edge[j].u;
+			}
+	}
+	bool flag = 1; //判断是否含有负权回路  
+	for (int i = 1; i <= edgenum; ++i)
+	{
+		if (dis[edge[i].v] > dis[edge[i].u] + edge[i].cost)
+		{
+			flag = 0;
+			break;
+		}
+	}
+	return flag;
+}
+
+void print_path(int root) //打印最短路的路径（反向）  
+{
+	while (root != pre[root]) //前驱  
+	{
+		printf("%d-->", root);
+		root = pre[root];
+	}
+	if (root == pre[root])
+		printf("%d\n", root);
+}
+
+int main()
+{
+	scanf_s("%d%d%d", &nodenum, &edgenum, &original);
+	pre[original] = original;
+	for (int i = 1; i <= edgenum; ++i)
+	{
+		scanf_s("%d%d%d", &edge[i].u, &edge[i].v, &edge[i].cost);
+	}
+	if (Bellman_Ford())
+		for (int i = 1; i <= nodenum; ++i) //每个点最短路  
+		{
+			printf("%d\n", dis[i]);
+			printf("Path:");
+			print_path(i);
+		}
+	else
+		printf("have negative circle\n");
+	return 0;
+}
+自己写的：
+#include<iostream>
+#define INF 1<<27
+#define Ni 1000
+using namespace std;
+struct edge
+{
+	int u, v, cost;
+};
+int dis[Ni], pre[Ni];
+int n, m, b;
+edge e[Ni];
+bool Bellman_Ford() {
+	for (int i = 0; i < n; ++i) {
+		dis[i] = (i == b ? 0 : INF);
+	}
+	for (int i = 0; i < n - 1; ++i) {
+		for (int j = 0; j < m; ++j) {
+			if (dis[e[j].v] > dis[e[j].u] + e[j].cost)  //边松弛
+			{
+				dis[e[j].v] = dis[e[j].u] + e[j].cost;
+				pre[e[j].v] = e[j].u;
+			}
+		}
+	}
+	int flag = 1;
+	for (int i = 0; i < m; ++i) {
+		if (dis[e[i].v] > dis[e[i].u] + e[i].cost)
+		{
+			flag = 0;
+			break;
+		}
+	}
+	return flag;
+}
+void print(int i) {
+	while (i != pre[i]) {
+		cout << i << " ";
+		i = pre[i];
+	}
+	cout << i << endl;
+}
+int main() {
+	cin >> n >> m >> b;
+	pre[b] = b;
+	for (int i = 0; i < m; ++i) {
+		int u, v, cost;
+		cin >> u >> v >> cost;
+		e[i].u = u;
+		e[i].v = v;
+		e[i].cost = cost;
+
+	}
+	if (Bellman_Ford()) {
+		for (int i = 0; i < n; ++i) {
+			cout << b << "-->" << i << ":" << " " << dis[i] << endl;
+			cout << "the route: ";
+			print(i);
+		}
+	}
+	else
+		cout << "have a negative circle" << endl;
+}
+
+最小生成树算法：
+1.Prim算法
+#include<iostream>  
+#define INF 10000  
+using namespace std;  
+const int N = 6;  
+bool visit[N];  
+int dist[N] = { 0, };  
+int graph[N][N] = { {INF,7,4,INF,INF,INF},  //INF代表两点之间不可达  
+                    {7,INF,6,2,INF,4},  
+                    {4,6,INF,INF,9,8},  
+                    {INF,2,INF,INF,INF,7},  
+                    {INF,INF,9,INF,INF,1},  
+                    {INF,4,8,7,1,INF}  
+                  };  
+int prim(int cur)  
+{  
+    int index = cur;  
+    int sum = 0;  
+    int i = 0;  
+    int j = 0;  
+    cout << index << " ";  
+    memset(visit,false, sizeof(visit));  
+    visit[cur] = true;  
+    for(i = 0; i < N; i++)  
+        dist[i] = graph[cur][i];//初始化，每个与a邻接的点的距离存入dist  
+    for(i = 1; i < N; i++)  
+    {  
+        int minor = INF;  
+        for(j = 0; j < N; j++)  
+        {  
+            if(!visit[j] && dist[j] < minor)          //找到未访问的点中，距离当前最小生成树距离最小的点  
+            {  
+                minor = dist[j];  
+                index = j;  
+            }  
+        }  
+        visit[index] = true;  
+        cout << index << " ";  
+        sum += minor;  
+        for(j = 0; j < N; j++)  
+        {  
+            if(!visit[j] && dist[j]>graph[index][j])      //执行更新，如果点距离当前点的距离更近，就更新dist  
+            {  
+                dist[j] = graph[index][j];  
+            }  
+        }  
+    }  
+    cout << endl;  
+    return sum;               //返回最小生成树的总路径值  
+}  
+int main()  
+{  
+    cout << prim(0) << endl;//从顶点a开始  
+    return 0;  
+}
+2.Kruskal算法
+#include<iostream>  
+#include<algorithm>
+using namespace std;
+#define M  5  //点个数
+#define N  7  //N边的个数
+struct node{
+	int begin;
+	int end;
+	int vlaue;
+};
+node edges[N];
+int father[M];
+int cmp(const void *x, const void *y) {
+	return ((node *)x)->vlaue - ((node *)y)->vlaue;
+}
+void make_set() {
+	for (int i = 0; i < M; ++i) {
+		father[i] = i;
+	}
+}
+int find_set(int cur) {
+	int r = cur;
+	while (r != father[r])
+		r = father[r];
+	int i = cur, j;
+	while (i != father[i]) {
+		j = father[i];
+		father[i] = r;
+		i = j;
+	}
+	return r;
+	//第二种，递归压缩
+	/*
+	if(cur!=father[cur])
+		father[cur]=find_set(father[cur]);
+	return father[cur];
+	*/
+}
+void union_set(int x, int y) {
+	x = find_set(x);
+	y = find_set(y);
+	if (x == y)
+		return;
+	else
+		father[x] = y;
+}
+int Kruskal(int cur) {
+	make_set();
+	int sum = 0;
+	for (int i = 0; i < N; ++i) {
+		if (find_set(edges[i].begin) != find_set(edges[i].end)) {
+			union_set(edges[i].begin, edges[i].end);
+			sum += edges[i].vlaue;
+		}
+	}
+	return sum;
+}
+int main() {
+	int x, y, z;
+	for (int i = 0; i < N; ++i) {
+		cin >> x >> y >> z;
+		edges[i].begin = x;
+		edges[i].end = y;
+		edges[i].vlaue = z;
+	}
+	qsort(edges, N, sizeof(edges[0]), cmp);
+	cout << Kruskal(0) << endl;
+}
+哈夫曼编码原理：
+   先按出现的概率大小排队，把两个最小的概率相加，作为新的概率 和剩余的概率重新排队，再把最小的两
+个概率相加，再重新排队，直到最后变成1。每次相 加时都将“0”和“1”赋与相加的两个概率，读出时由
+该符号开始一直走到最后的“1”， 将路线上所遇到的“0”和“1”按最低位到最高位的顺序排好，就是该
+符号的赫夫曼编码。

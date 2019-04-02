@@ -1,0 +1,79 @@
+贪心算法（又称贪婪算法）是指，在对问题求解时，总是做出在当前看来是最好的选择。也就是说，不从整体最优上加以考虑，他所做出的是在某种意义上的局部最优解。贪心算法不是对所有问题都能得到整体最优解，关键是贪心策略的选择，选择的贪心策略必须具备无后效性，即某个状态以前的过程不会影响以后的状态，只与当前状态有关。
+1.共享资源问题
+#include<iostream>
+#include<vector>
+
+#include<algorithm>
+
+using namespace std;
+
+int select(int *s, int *f, int a, int b)
+
+{
+	int m = a + 1;
+	
+while (m <= b&&s[m] < f[a])
+		
+++m;
+	
+if (m <= b)
+	
+{
+		
+return 1+select(s, f, m, b);
+	
+}
+	
+else
+		
+return 0;
+
+}
+
+int main()
+{
+	
+int s[12] = { 0,1,3,0,5,3,5,6,8,8,2,12 };
+	
+int f[12]= { 0,4,5,6,7,9,9,10,11,12,14,16 };
+	
+int a = select(s, f, 0, 11);
+	
+cout << a << endl;
+
+}
+（迭代版）
+#include<iostream>
+#include<vector>
+
+#include<algorithm>
+
+using namespace std;
+
+int main()
+{
+int s[11] = { 1,3,0,5,3,5,6,8,8,2,12 };
+
+int f[11]= { 4,5,6,7,9,9,10,11,12,14,16 };
+	
+int m = 0,p=0;
+	
+for (int n = 1; n < 11; ++n)
+	
+{
+		
+if (s[n] > f[m])
+		
+{
+			
+m = n;
+			
+++p;
+		
+}
+	
+}
+	
+cout << p + 1 << endl;
+
+}

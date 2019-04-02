@@ -1,0 +1,24 @@
+在C++中，要实现这个功能，就要用到std命名空间中常用于流的控制符，这里通常要用到setprecision()函数，可以通过这个函数控制小数点后面位数。还要注意的是，使用它需要加入头文件<iomanip>，这个头文件也好记。io是指in,out，输入输出流，manip是操作的缩写，所以iomanip里面全是输入输出流的操作
+#include <iostream>  
+#include <fstream>  
+#include <iomanip>  
+//用setprecision(n)设置精度，其中n表示精确到小数点后n位  
+using namespace std;  
+  
+void main()  
+{  
+    double aa = 10;  
+    cout<<"     12345.0普通输出为："<<12345.0<<endl;//输出12345  
+    cout<<fixed<<setprecision(8)<<"          10保留8位有效数字输出为："<<aa<<endl;  
+    //fixed：表示普通方式输出，不采用科学计数法。fixed也可以放在setprecision(n)后面  
+    cout<<"     12345.0保留8位有效数字输出为："<<12345.0<<endl;  
+    cout<<fixed<<setprecision(2)<<"    -123.456保留2位有效数字输出为："<<-123.456<<endl;  
+  
+    cout << setprecision (4); // 精度  
+    cout.setf(ios::fixed,ios::floatfield); // 定点格式  
+    cout << "123.45678901保留4位有效数字输出为："<< 123.45678901<<endl;  
+  
+    printf("     %2.4f保留2位有效数字输出为：%2.2f\n",11.1191,11.1191);  
+  
+    system("pause");  
+}  

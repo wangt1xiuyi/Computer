@@ -1,0 +1,35 @@
+#include "stdafx.h"
+#include<iostream>
+#include<vector>
+using namespace std;
+void fastsort(vector<int> &a, int low, int high)
+{
+	if (low >= high) {
+		return;
+	}
+	int first = low;
+	int last = high;
+	int k = a[first];
+	while (first < last)
+	{
+	 while (first < last&&a[last] >= k) {
+				--last;
+			}
+			while (first < last&&a[first] <= k) {
+				++first;
+			}
+			if (first < last) {
+				swap(a[first], a[last]);
+			}
+		}
+		a[low] = a[first];
+		a[first] = k;
+		fastsort(a, low, first - 1);
+		fastsort(a, first + 1, high);
+}
+int main() {
+	vector<int> a{ 1,9,6,8,4,2,7,5,3 };
+	fastsort(a, 0, 8);
+	for (auto &x : a)
+		cout << x << ends;
+}

@@ -1,0 +1,1615 @@
+﻿1.赋值运算符
+Mystring &Mystring::operator=(Mystring const &str){
+	if(this!=str){
+		Mystring temp(str);
+		char *temp_str=temp.chardata;
+		temp.chardata=chardata;
+		chardata=temp_str;
+	}
+	return *this;
+}
+2.单例模式
+class mysigle{
+	mysigle();
+	static mysigle *p_mysigle=NULL;
+public:
+    static mysigle *getssigle(){
+		if(p_mysigle==NULL){
+			p_mysigle=new mysigle();
+		}
+		return p_mysigle;
+	}
+}
+3.数组中重复数字（O(n),o(1)）
+bool duplicate(int numbers[],int length,int *duplication){
+	if(numbers==nullptr||length<=0)
+		return false;
+	for(int i=0;i<length;++i){
+		if(numbers[i]<0||numbers[i]>length-1)
+			return false;
+	}
+	for(int i=0;i<length;++i){
+		while(numbers[i]!=i){
+			if(numbers[i]==numbers[numbers[i]])
+			{
+				*duplication=numbers[i];
+				return true;
+			}
+			int temp=numbers[i];
+			numbers[i]=numbers[numbers[i]];
+			numbers[numbers[i]]=temp;
+		}
+	}
+	return false;
+}
+3.1如果不能动数组，那么可以利用hash，也可以利用判断范围内的个数，从而使用二分法查找
+4.二维数组中的查询
+bool Find(int *matrix,int rows,int columns,int number){
+	if(matrix!=nullptr&&rows>=0&&columns>=0){
+	int row=0,column=columns-1;
+	while(row>=0&&row<rows&&column>=0&&column<columns){
+		if(matrix[row*columns+column]>number)
+			--column;
+		else if(matrix[row*columns+column]<number)
+			++row;
+		else
+			return true;
+	}
+	}
+	return false;
+}
+5.替换空格
+void ReplaceBlank(char string[],int length){
+	if(string==nullptr||length<=0)
+		return;
+	int oldlength=0;
+	int blankcount=0;
+	for(int i=0;string[i]!='\0';++i){
+		++oldlength;
+		if(string[i]=' ')
+		++blankcount;
+	}
+	int newlength=oldlength+blankcount*2;
+	if(newlength>length)
+		return;
+	while(oldlength>=0&&newlength>oldlength){  //可以节约一部分时间，只做第一个以前的复制
+		if(string[oldlength-1]!=' ')
+			string[newlength--]=string[oldlength--];
+		else{
+			string[newlength--]='0';
+			string[newlength--]='2';
+			string[newlength--]='%';
+			--oldlength;
+		}
+	}
+}
+6.从尾向前打印链表(栈、递归、先翻转在打印)
+struct ListNode{
+	int val;
+	ListNode *next;
+}
+void PrintLinkReversingly_Iteratively(ListNode *pHead){
+	if(pHead!=nullptr){
+		if(pHead->next!=nullptr)
+		PrintLinkReversingly_Iteratively(pHead->next);
+	cout<<pHead->val<<ends;
+	}
+}
+7.重建二叉树（中序、先序）
+struct BinaryTreeNode{
+	int m_nval;
+	BinaryTreeNode *m_pLeft;
+	BinaryTreeNode *m_pRight;
+}
+BinaryTreeNode *Construct(int *preorder,int *inorder,int length){
+	if(preorder==nullptr||inorder==nullptr||length<=0)
+		return NULL;
+	return CreateBinaryTree(preorder,inorder,0,length-1,0,length-1);
+}
+BinaryTreeNode *CreateBinaryTree(int *preorder,int *inorder,int pb,int pe,int ib,int ie){
+	if(pb>pe||ib>ie)
+		return NULL;
+	BinaryTreeNode *root=new BinaryTreeNode();
+	root->m_nval=preorder[pb];
+	root->m_pLeft=root->m_pRight=NULL;
+	int key=preorder[pb];
+	int index=ib;
+	for(;index<=ie;++index){
+		if(inorder[index]==key)
+			break;
+	}
+	root->left=CreateBinaryTree(preorder,inorder,pb+1,index+pb-ib,ib,index-1);
+	root->left=CreateBinaryTree(preorder,inorder,index+1+pe-ie,pe,index+1,ie);
+	return root;
+	
+}
+8.二叉树的下一个节点
+BinaryTreeNode *GetNext(BinaryTreeNode *pNode){
+	if(!pNode)
+		return NULL;
+	BinaryTreeNode *pNext=NULL;
+	if(pNode->right){
+		pNode=pNode->right;
+		while(pNode->left)
+			pNode=pNode->left;
+		pNext=pNode;
+	}
+	else if(pNode->m_Parent){
+			while(pNode->m_Parent&&pNode->m_Parent->right==pNode){
+				pNode=pNode->m_Parent;
+			}
+			pNext=pNode->m_Parent;
+	}
+	return pNext;
+}
+9.两个栈实现队列（略）、两个队列实现栈（略）；
+10.斐波那契数列（动态规划）
+long long Fibonacci(unsigned n){
+	long long a=1;
+	long long b=1;
+	for(int i=2;i<n;++i){
+		long long c=b;
+		b=a+b;
+		a=b;
+	}
+	return b;
+}
+跳台阶（动态规划，略）
+11.旋转数组中的最小数字
+int Min(int *number,int length){
+	if(number==nullptr||length<=0)
+		return -1;
+	int begin=0;
+	int end=length-1;
+	int mid=begin;
+	while(number[begin]>=number[end]){
+		if(end==begin+1){
+			mid=end;
+			break;
+		}
+		mid=(begin+end)/2;
+		if(number[begin]==number[mid]&&number[mid]==number[end])
+			return Minorder(number,length);
+		if(number[mid]>=number[begin])
+			begin=mid;
+		else if(number[mid]=<number[end])
+			end=mid;
+	}
+	return number[mid];
+}
+int Minorder(int *number,int length){
+	int min=number[0];
+	for(int i=1;i<length;++i){
+		if(number[i]<min)
+			min=number[i];
+	}
+	return min;
+}
+12.矩阵中的路径
+bool hasPath(char *matrix,int rows,int cols,char *str){
+	for(int i=0;i<rows;++i){
+		for(int j=0;j<cols;++j){
+			vector<vector<int>> visit(rows,vector<int>(cols,0));
+			if(matrix[i*cols+j]==*str&&reverse(matrix,i,j,rows,cols,str+1,visit))
+				return true;
+		}
+	}
+	return false;
+}
+bool reverse(char *matrix,int i,int j,int rows,int cols,char *str,vector<vector<int>> &visit){
+	visit[i][j]==1;
+	if(*str=='\0')
+		return true;
+	int dx[]={1,-1,0,0};
+	int dy[]={0,0,1,-1};
+	for(int k=0;k<4;++k){
+		int new_i=i+dx[k];
+		int new_j=j+dy[k];
+		if(new_i>=0&&new_i<rows&&new_j>=0&&new_j<cols&&visit[new_i][new_j]==0&&matrix[new_i*cols+new_j]==*str&&reverse(matrix,new_i,new_j,rows,cols,str+1,visit))
+			return true;
+	}
+	return false;
+}
+13.机器人的运动范围（回溯，后面在写一次，与上题目类似）
+14.剪绳子（两种解法）
+int maxProductAfterCutting_solution(int length){
+	if(length<2)
+		return length;
+	if(length==2)
+		return 1;
+	if(length==3)
+		return 2;
+	int *dp=new int[length+1];
+	dp[0]=0;
+	dp[1]=1;
+	dp[2]=2;
+	dp[3]=3;
+	int max=0;
+	for(int i=4;i<=length;++i){
+		max=0;
+		for(int j=1;j<=i/2;++j){
+			int product=dp[j]*dp[i-j];
+			if(max<product)
+				max=product;
+			dp[i]=max;
+		}
+	}
+	max=dp[length];
+	delete[] dp;
+	return max;
+}
+14.2尽可能剪成3段，然后剩下的剪为2段（贪心算法）
+
+15.二进制中1的个数
+//小tip:
+      右移时如果数字是一个有符号数值，则用数字的符号位填补最左边的n位；左移直接丢弃，没有处理符号位；
+
+//常规解法
+int Numberof1(int n){
+	int count=0;
+	unsigned int flag=1;
+	while(flag){
+		if(n&flag)
+			++count;
+		flag=flag<<1;
+	}
+	return count;
+}
+//第二种解法：把一个整数减去1，在和这个整数做与运算，会把该整数最右边的1变成0。
+int Numberof1(int n){
+	int count=0;
+	while(n){
+		++count;
+		n=(n-1)&n;
+	}
+	return n;
+}
+16.数值的整数次方
+bool t_flag=false;
+double Power(double base,int exponet){
+	if(equal(base,0.0)&&exponet<0)
+	{
+		t_flag=true;
+		return 0.0
+	}
+	unsigned int absexponet=(unsigned int)(exponet)
+	if(exponet<0)
+		absexponet=(unsigned int)(-exponet);
+	double result=Powerwithunsignedexponet(base,absexponet);
+	if(exponet<0)
+		result=1.0/result;
+	return result;
+}
+double Powerwithunsignedexponet(double base,unsigned int exponet){
+	if(exponet==0)
+		return 1.0;
+	if(exponet==1)
+		return base;
+	double result=Powerwithunsignedexponet(base,exponet>>1);
+	result*=result;
+	if(exponet&0x1==1)//通过移位判断奇偶性
+		result*=base;
+	return result;
+}
+17.打印从1到最大的n位数（有可能超过整型限制）
+17.1利用字符串进行加减
+void Print_1_To_Max_of_n(int n){
+	if(n<=0)
+		return;
+	char *number=new char[n+1];
+	memset(number,'0',n);
+	number[n]='\0';
+	while(!Increment(number)){
+		PrintNumber(number);
+	}
+	delete[] number;
+}
+bool Increment(char *number){
+	bool overflow=false;
+	int cin=0;
+	int n_length=strlen(number);
+	for(int i=n_length-1;i>=0;--i){
+		int nSum=number[i]-'0'+cin;
+		if(i==n_length-1)
+			++nSum;
+		if(nSum>=10){
+			if(i==0)
+				overflow=true;
+			else{
+				cin=1;
+				nSum-=10;
+				number[i]='0'+nSum;
+			}
+		}
+		else{
+			number[i]='0'+nSum;
+			break;
+		}
+	}
+	return overflow;
+}
+void PrintNumber(char *number){
+	int n_length=strlen(number);
+	bool isbegin0=true;
+	for(int i=0;i<n_length;++i){
+		if(isbegin0&&number[i]!='0')
+			isbegin0=false;
+		if(!isbegin0)
+			cout<<number[i];
+	}
+	cout<<endl;
+}
+17.2利用全排列
+void Print_1_To_Max_of_n(int n){
+	if(n<=0)
+		return;
+	char *number=new char[n+1];
+	memset(number,'0',n);
+	number[n]='\0';
+	for(int i=0;i<10;++i){
+		number[0]=i+'0';
+		PrintAllsort(number,n,0);
+	}
+	delete[] number;
+}
+void PrintAllsort(char *number,int n,int i){
+	if(i==n-1)
+	{
+		PrintNumber(number);
+		return;
+	}
+	for(int j=0;j<10;++j){
+		number[i+1]=j+'0';
+		PrintAllsort(number,n,i+1);
+	}
+}
+18.1删除链表的节点（o(1)时间复杂度）
+struct ListNode{
+	int m_value;
+	ListNode *next;
+}
+void DeleteNode(ListNode** pListHead,ListNode *pToBeDeleted){
+	if(!pListHead||!pToBeDeleted)
+		return;
+	if(pToBeDeleted->next!=NULL){
+		ListNode *Delete=pToBeDeleted->next;
+		pToBeDeleted->m_value=pToBeDeleted->next->m_value;
+		pToBeDeleted->next=pToBeDeleted->next->next;
+		delete Delete;
+		Delete=NULL;
+	}
+	else if(**pListHead==*pToBeDeleted){
+		delete pToBeDeleted;
+		*pListHead=NULL;
+		pToBeDeleted=NULL;
+	}
+	else{
+		ListNode *pNext=*pListHead;
+		while(pNext->next&&pNext->next!=pToBeDeleted){
+			pNext=pNext->next;
+		}
+		if(pNext->next==pToBeDeleted)
+		{
+			pNext->next=NULL;
+			delete pToBeDeleted;
+			pToBeDeleted=NULL;
+		}
+	}
+}
+18.2删除链表中重复的节点
+void DeleteDuplication(ListNode** pHead){
+	if(!pHead||!*pHead)
+		return;
+	ListNode *preNode=NULL;
+	ListNode *pNode=*pHead;
+	while(pNode){
+		ListNode *pNext=pNode->next;
+		bool isDeleted=false;
+		if(pNext&&pNext->m_value==pNode->value)
+			isDeleted=true;
+		if(!isDeleted)
+		{
+			preNode=pNode;
+			pNode=pNode->next;
+		}
+		else{
+			int value=pNode->m_value;
+			ListNode *pDeleted=pNode;
+			while(pDeleted!=NULL&&pDeleted->m_value==value){
+				pNext=pDeleted->next;
+				delete pDeleted;
+				pDeleted=NULL;
+				pDeleted=pNext;
+			}
+			if(preNode==NULL)
+				*pHead=pNext;
+			else
+				preNode->next=pNext;
+			pNode=pNext;
+		}
+	}
+}
+19.正则表达式匹配
+bool match(char *str,char *pattern){
+	if(str==NULL||pattern==NULL)
+		return false;
+	return matchcore(str,pattern);
+}
+bool matchcore(char *str,char *pattern){
+	if(*str=='\0'&&*pattern=='\0')
+		return true;
+	if(*str!='\0'&&*pattern=='\0')
+		return false;
+	if(*(pattern+1)=='*'){
+		if(*str==*pattern||(*pattern=='.'&&*str!='\0'))
+			return matchcore(str+1,pattern+2)||matchcore(str+1,pattern)||matchcore(str,pattern+2)
+		else
+			return matchcore(str,pattern+2);
+	}
+	if(*str==*pattern||(*pattern=='.'&&*str!='\0'))
+		return matchcore(str+1,pattern+1);
+	return false;
+}
+20.表示数值的字符串
+bool isNumberic(const char* str){
+	if(str==nullptr)
+		return false;
+	bool numeric=scanInteger(&str);
+	if(*str=='.'){
+		++str;
+		numeric=scanUnsignedInterger(&str)||numberic
+	}
+	if(*str=='e'||*str=='E'){
+		++str;
+		numberic=numberic&&scanInteger(&str);
+	}
+	return *str=='\0'&&numberic;
+}
+bool scanUnsignedInterger(const char **str){
+	const char *before=**str;
+	while(**str!='\0'&&**str>='0'&&**str<='9')
+		++(*str);
+	return *str>before;
+}
+bool scanInteger(**str){
+	if(**str=='+'||**str=='-')
+		++(*str);
+	return scanUnsignedInterger(str);
+}
+21.调整数组顺序使奇数位于偶数前面
+//基于双指针
+void ReorderOddEvent(int *pData,unsigned int length){
+    if(!pData)
+        return;
+    int begin=0,end=length-1;
+    while(begin<end){
+        if(pData[begin]&0x1)
+            ++begin;
+        else{
+		    if(pData[end]&0x1){
+               pData[begin]=pData[begin]^pData[end];
+               pData[end]=pData[begin]^pData[end];
+               pData[begin]=pData[end]^pData[begin];
+            }
+            else
+            --end;
+        }
+    }
+}	
+22.链表中倒数第k个节点（双指针）
+struct ListNode{
+	int value;
+	ListNode *next;
+};
+ListNode *FindKthToTail(ListNode* pListHead,unsigned int k){
+	if(!pListHead||k<=0)
+		return NULL;
+	ListNode *pHead=pListHead;
+	while(pHead&&--k){
+		pHead=pHead->next;
+	}
+	if(k!=0)
+		return NULL;
+	while(pHead->next){
+		pHead=pHead->next;
+		pListHead=pListHead->next;
+	}
+	return pListHead;
+}
+//类似题目双指针解决找中间节点
+23.链表中环的入口
+ListNode *MeetingNode(ListNode* pHead){
+	if(!pHead)
+		return NULL;
+	ListNode *pHead_onestep=NULL;
+	if (pHead->next)
+		pHead_onestep = pHead->next;
+	ListNode *pHead_twostep=NULL;
+	if(pHead->next->next!=NULL)
+		pHead_twostep=pHead->next->next;
+	while(pHead_onestep->next&&pHead_twostep&&pHead_onestep!=pHead_twostep)
+	{
+		pHead_onestep=pHead_onestep->next;
+		pHead_twostep=pHead_twostep->next->next;
+	}
+	if(pHead_onestep!=pHead_twostep)
+		return NULL;
+	else{
+		pHead_onestep=pHead;
+		while(pHead_onestep!=pHead_twostep){
+			pHead_onestep=pHead_onestep->next;
+			pHead_twostep=pHead_twostep->next;
+		}
+		return pHead_onestep;
+	}
+}
+24.翻转链表
+ListNode *reverseList(ListNode* pHead){
+	if(!pHead)
+		return NULL;
+	ListNode *new_pHead=NULL;
+	while(pHead){
+		ListNode *temp_node=pHead;
+		pHead=pHead->next;
+		temp_node->next=new_pHead;
+		new_pHead=temp_node;
+	}
+	return new_pHead;
+}
+25.合并两个排序的链表（递归或直接循环遍历，很简单）
+26.树的子结构（值类型位double而不是int型）
+bool HasSubtree(BinaryTreeNode *pRoot1,BinaryTreeNode *pRoot2){
+	bool result=false;
+	if(pRoot1&&pRoot){
+		if(equal(pRoot1->value,pRoot2->value))
+			result=DoesTree1hasTree2(pRoot1,pRoot2);
+		if(!result)
+			result=HasSubtree(pRoot->left,pRoot2);
+		if(!result)
+			result=HasSubtree(pRoot->right,pRoot2);
+	}
+	return false;
+}
+bool DoesTree1hasTree2(BinaryTreeNode *pRoot1,BinaryTreeNode *pRoot2){
+	if(!pRoot2)
+		return true;
+	if(!pRoot1)
+		return false;
+	if(!equal(pRoot1->value,pRoot2->value))
+		return false;
+	return DoesTree1hasTree2(pRoot1->left,pRoot2->left)&&DoesTree1hasTree2(pRoot1->right,pRoot2->right);
+}
+bool equal(double p1,double p2){
+	if((p1-p2<0.0000001)&&(p1-p2>-0.0000001))
+		return true;
+	else
+		return false;
+}
+代码要求的：鲁棒性、完整性、规范性；
+27.二叉树的镜像
+void MirrorRecursively(BinaryTreeNode *pNode){
+	if(!pNode)
+		return;
+	if(!pNode->left&&pNode->right)
+		return
+	BinaryTreeNode *temp=pNode->left;
+	pNode->left=pNode->right;
+	pNode->right=temp;
+	if(pNode->letf)
+		MirrorRecursively(pNode->left);
+	if(pNode->right)
+		MirrorRecursively(pNode->right);
+}
+28.对称的二叉树
+bool isSymmetrical(BinaryTreeNode *pRoot){
+	return isSymmetrical1(pRoot,pRoot);
+}
+bool isSymmetrical1(BinaryTreeNode *pRoot1,BinaryTreeNode *pRoot2){
+	if(pRoot1==NULL&&pRoot2==NULL)
+		return true;
+	if(pRoot1==NULL||pRoot2==NULL)
+		return false;
+	if(pRoot1->value!=pRoot->value2)
+		return false;
+	return isSymmetrical(pRoot1->left,pRoot2->right)&&isSymmetrical(pRoot2->left,pRoot1->right);
+29.顺时针打印矩阵
+void PrintMatrix(int **number,int columns,int rows){
+	int start=0;
+	while(columns>2*start&&rows>2*start){
+		PrintMatrix1(number,columns,rows,start);
+		++start;
+	}
+}
+void PrintMatrix1(int **number,int columns,int rows,int start){
+	int endx=rows-start-1;
+	int endy=columns-start-1;
+	for(int i=start;i<=endy;++i){
+		cout<<number[start][i]<<ends;
+	}
+	if(start<endx){
+		for(int i=start+1;i<=endx;++i){
+			cout<<number[i][endy]<<ends;
+		}
+	}
+	if(start<endy&&start<endx){
+		for(int i=endy-1;i>=start;--i)
+			cout<<number[endx][i]<<ends;
+	}
+	if(start<endy&&start<endx-1){
+		for(int i=endx-1;i>start;--i)
+			cout<<number[i][start]<<ends;
+	}
+}
+30.含min函数的栈（略）
+31.栈的压入、弹出序列
+bool isPoporder(const int *pPush,const int *pPop,int nlength){
+	stack<int> input;
+	queue<int> output;
+	if(!pPush||!pPop)
+		return false;
+	int i=0,j=0;
+	while(i<nlength){
+		output.push(pPop[i]);
+		++i;
+	}
+	while(j<nlength){
+			input.push(pPush[j]);
+		while(!input.empty()){
+			if(input.top()==output.front())
+			{
+				input.pop();
+				output.pop();
+			}
+			else
+				break;
+		}
+		++j;
+	}
+	return output.empty();
+}
+32.1从上到下打印二叉树（广度优先遍历，略）
+32.2之字形打印(利用栈而不用map)
+33.二叉搜索树的后序遍历序列
+bool VerifySquenceOfBST(int sequence[],int length){
+	if(!sequence||length<=0)
+		return false;
+	return VerifySquenceOfBST1(sequence,0,length-1);
+}
+bool VerifySquenceOfBST1(int sequence[],int begin,int end){
+	if(begin>=end)
+		return true;
+	int i=begin;
+	for(;i<end;++i){
+		if(sequence[i]>sequence[end])
+			break;
+	}
+	for(int j=i+1;j<end;++j){
+		if(sequence[j]<sequence[end])
+			return false;
+	}
+	return VerifySquenceOfBST1(sequence,begin,i-1)&&VerifySquenceOfBST1(sequence,i,end-1);
+}
+34.二叉树中和为某一值的路径
+void FindPath(BinaryTreeNode *pRoot,int expectNumber,vector<vector<int>> &path){
+	if(!pRoot||expectNumber<=0)
+		return;
+	vector<int> son_path;
+	FindPath_son(pRoot,0,expectNumber,son_path,path);
+}
+void FindPath_son(BinaryTreeNode *pRoot,int target,int expectNumber,vector<int> &son_path,vector<vector<int>> &path){
+	if(expectNumber<=target){
+		if(expectNumber==target&&!pRoot->left&&!pRoot->right)
+			path.push_back(son_path);
+		return;
+	}
+	son_path.push_back(son_path->value);
+	target+=son_path->value;
+	if(son_path->left)
+		FindPath_son(pRoot,target,expectNumber,son_path,path);
+	if(son_path->right)
+		FindPath_son(pRoot,target,expectNumber,son_path,path);
+	target-=son_path->value;
+	son.pop_back();
+}
+35.复杂链表的赋值（深拷贝）
+struct ListNode{
+	int value;
+	ListNode *next;
+	ListNode *random;
+};
+ListNode *clone_complexListNode(ListNode* pHead){
+	clone_Node(pHead);
+	clone_random(pHead);
+	return clone_list(pHead);
+}
+void clone_Node(ListNode* pHead){
+	ListNode* p=pHead;
+	while(p){
+		ListNode* newNode=new ListNode();
+		newNode->value=p->vlaue;
+		newNode->next=p->next;
+		newNode->random=NULL;
+		p->next=newNode;
+		p=newNode->next;
+	}
+}
+void clone_random(ListNode* pHead){
+	ListNode* p=pHead;
+	while(p){
+		p->next->random=p->random;
+		p=p->next->next;
+	}
+}
+ListNode* clone_list(ListNode* pHead){
+	ListNode* p=pHead;
+	ListNode* pClone=NULL;
+	if(!p)
+		ListNode* pClone=pHead->next;
+	while(!pClone&&!p->next){
+		pClone->next=pClone->next->next;
+		pClone=pClone->next;
+	}
+	return pHead->next;
+}
+36.二叉搜索树与双向链表
+BinaryTreeNode *Convert(BinaryTreeNode* pRootOfTree){
+	BinaryTreeNode *pLastNodeInlist=NULL;
+	ConvertNode(pRootOfTree,&pLastNodeInlist);
+	BinaryTreeNode *pHeadOfList=pLastNodeInlist;
+	while(pHeadOfList!=NULL&&pHeadOfList->left!=NULL)
+		pHeadOfList=pHeadOfList->left;
+	return pHeadOfList;
+}
+void ConvertNode(BinaryTreeNode *pNode,BinaryTreeNode **pLastNodeInlist){
+	if(pNode==NULL)
+		return;
+	BinaryTreeNode *pCurrent=pNode;
+	if(pCurrent->left!=NULL){
+		ConvertNode(pCurrent->left,pLastNodeInlist);
+	}
+	pCurrent->left=*pLastNodeInlist;
+	if(*pLastNodeInlist!=NULL)
+		(*pLastNodeInlist)->right=pCurrent;
+	*pLastNodeInlist=pCurrent;
+	if(pCurrent->right){
+		ConvertNode(pCurrent->right,pLastNodeInlist);
+	}
+}
+37.序列化二叉树
+void Serialize(BinaryTreeNode* pRoot,string &s){
+	if(pRoot==NULL)
+	{
+		s+="$,";
+		return;
+	}
+	s+=to_string(pRoot->value)+',';
+	Serialize(pRoot->left,s);
+	Serialize(pRoot->right,s);
+}
+void Dserialize(BinaryTreeNode *pRoot,string &s,int &begin){
+	if(begin==s.size())
+		return;
+    pRoot=new BinaryTreeNode();
+	node->vlaue=s[begin];
+	node->left=NULL;
+	node->right=NULL;
+	Dserialize(node->left,s,++begin);
+	Dserialize(node->right,s,++begin);
+}
+38.1字符串的排列(排列)
+void Permutation(char *pStr){
+	if(!pStr)
+		return; 
+	Allsort(pStr,pStr);
+}
+void Allsort(*pStr,*begin){
+	if(*begin=='\0'){
+		cout<<*pStr<<endl;
+	}
+	else{
+		for(char *pch=*begin;*pch!='\0';++pch){
+			swap(*pch,*begin);
+			ALLsort(pStr,begin+1);
+			swap(*pch,*begin);
+		}
+	}
+}
+38.2字符串组合（组合）
+void Combation(const char* str, int number, vector<char> &s, vector<vector<char>> & result) {
+	if (number == 0)
+	{
+		result.push_back(s);
+		return;
+	}
+	if (*str == '\0')
+		return;
+	s.push_back(*str);
+	Combation(str + 1, number - 1, s, result);
+	//if (!s.empty())
+	s.pop_back();
+	Combation(str + 1, number, s, result);
+}
+void combation(const char *str, vector<vector<char>> &result) {
+	if (str == NULL)
+		return;
+	int n = strlen(str);
+	for (int i = 1; i <=n; ++i) {
+		vector<char> s;
+		Combation(str, i, s, result);
+	}
+}
+38.3 n皇后问题
+void put_nQueen(int *queen, int begin, int n, int &count) {
+	if (begin == n) {
+		for (int i = 0; i < n; ++i) {
+			for (int j = i + 1; j < n; ++j) {
+				if (i - j == queen[i] - queen[j] || i - j == queen[j] - queen[i])
+					return;
+			}
+		}
+		++count;
+	}
+	else {
+		for (int i = begin; i < n; ++i) {
+			swap(queen[i], queen[begin]);
+			put_nQueen(queen, begin + 1, n, count);
+			swap(queen[i], queen[begin]);
+		}
+	}
+}
+int nQueen(int n) {
+	if (n <= 0)
+		return 0;
+	int count = 0;
+	int *queen = new int[n];
+	for (int i = 0; i < n; ++i)
+		queen[i] = i;
+	put_nQueen(queen, 0, n, count);
+	delete[]queen;
+	return count;
+}
+39.数组中出现次数超过一半的数字(略，利用记录)
+//int MoreThanHalfNum(int *numbers,int length)
+40.最小的k个数（最小堆，priorty_queue<int,vector<int>,greater<int>>）
+40.1 Partion算法(单指针、双指针、三分法)
+void Partion(int *numbers,int begin,int end){
+	int key=numbers[begin];
+	while(begin<end){
+		while(begin<end&&numbers[end]>=key)
+		--end;
+		numbers[end]=numbers[begin];
+		while(begin<end&&numbers[begin]<=key)
+			++begin;
+		numbers[begin]=numbers[end];
+	}
+	number[begin]=key;
+	return begin;
+}
+三分法（解决国旗问题）：
+ void sortColors(vector<int>& nums) {
+        if(nums.empty())
+            return;
+       int left=0;
+       int right=nums.size()-1;
+       int scan=0;
+       while(scan<=right){
+           if(nums[scan]<1)
+               swap(nums[scan++],nums[left++]);
+           else if(nums[scan]==1)
+               ++scan;
+           else{
+               swap(nums[scan],nums[right--]);
+           }
+       }
+    }
+void GetLeastNumbers(int *numbers,int n,int *out,int k){
+	if(!numbers||!out||k<=0||n<=0||k>n)
+		return;
+	int begin=0;
+	int end=n-1;
+	int index=Partion(numbers,begin,end);
+	while(index!=k-1){
+		if(index>k-1){
+			end=index-1;
+			index=Partion(numbers,begin,end);
+		}
+		else{
+			begin=index+1;
+			index=Partion(numbers,begin,end);
+		}
+	}
+	for(int i=0;i<k;++i){
+		out[i]=numbers[i];
+	}
+}
+41.数据流中的中位数（最小堆+最大堆，略）
+42.连续子数组的最大和（O(n)）
+int FindmaxsumofSubArray(int *pData,int nlength){
+	if(!pData||nlength<=0)
+		return;
+	vector<int> dp(nlength,0);
+	int Max=INT_MIN;
+	dp[0]=pData[0];
+	if(Max<dp[0])
+		dp[0]=Max;
+	for(int i=1;i<nlength;++i){
+		if(dp[i-1]<0)
+			dp[i]=pData[i];
+		else
+			dp[i]=pData[i]+dp[i-1];
+        if(Max<dp[i])
+		  dp[i]=Max;
+	}
+	return Max;
+}
+43.1~n整数中1出现的次数(O(logn))
+int NumberOfBetween1AndN(unsigned int n){
+	if(n<=0)
+		return 0;
+	char strN[50];
+	sprintf(strN,"%d",n);
+	return NumberOf1(strN);
+}
+int NumberOf1(const char *strN){
+	if(!strN||*strN<'0'||*strN>'9'||*strN=='\0')
+		return 0;
+	int first=*strN-'0';
+	unsigned int length=static_cast<unsigned int>(strlen(strN));
+	if(length==1&&first==0)
+		return 0;
+	if(length==1&&first>0)
+		return 1;
+	int numFirstDigit=0;
+	if(fisrt>1)
+		numFirstDigit=PowerBase10(length-1);
+	else if(first==1)
+		numFirstDigit=atoi(strN+1)+1;
+	int numOtherDigits=first*(length-1)*PowerBase10(length-2);
+	int numRecursive=NumberOf1(strN+1);
+	return numFirstDigit+numOtherDigits+numRecursive;
+}
+int PowerBase10(unsigned int n){
+	int result=1;
+	while(n--){
+		result*=10;
+	}
+	return result;
+}
+44.数字序列中某一位的数字
+int digitIndex(int index, int basic) {
+	int begin = 1;
+	if (basic == 1)
+		begin = 0;
+	else {
+		int basic1 = basic;
+		while (basic1 != 1) {
+			begin = begin * 10;
+				--basic1;
+		}
+	}
+	int target = index / basic + begin;
+	string s = to_string(target);
+	return s[index%basic] - '0';
+}
+int countofIntegers(int basic) {
+	if (basic == 1)
+		return 10;
+	else {
+		int count = 9;
+		while (basic != 1) {
+			count *= 10;
+			--basic;
+		}
+		return count;
+	}
+}
+int digitAtIndex(int index) {
+	if (index < 0)
+		return -1;
+	int basic = 1;
+	while (true) {
+		int numbers = countofIntegers(basic);
+		if (index < numbers*basic) {
+			return digitIndex(index, basic);
+		}
+		index -= basic * numbers;
+		++basic;
+	}
+	return -1;
+}
+45.把数组排成最小的数
+bool compare(string s, string s1) {
+	return s + s1 < s1 + s;
+}
+void PrintMinNumber(int *number, int length){
+if (!number || length <= 0)
+return;
+vector<string> nums(length, "");
+for (int i = 0; i < length; ++i) {
+	nums[i] = to_string(number[i]);
+}
+sort(nums.begin(), nums.end(),compare);
+string result;
+for (int i = 0; i < length; ++i) {
+	result += nums[i];
+}
+cout << result << endl;
+}
+46.把数字翻译成字符串
+int GetNumberOfTranslation(string &s) {
+	vector<int> dp(s.size() + 1, 0);
+	dp[0] = 1;
+	dp[1] = 1;
+	for (int i = 2; i <= s.size(); ++i) {
+		if (s[i - 2] > '0'&&s[i - 2] <= '2'&&s[i - 1] >= '0'&&s[i - 1] <= '5')
+			dp[i] = dp[i - 1] + dp[i - 2];
+		else
+			dp[i] = dp[i - 1];
+	}
+	return dp[s.size()];
+}
+int GetTranslation(int number) {
+	if (number < 0)
+		return 0;
+	string s = to_string(number);
+	return GetNumberOfTranslation(s);
+}
+47.礼物的最大价值
+int getMaxValue_solution(const int* values, int rows, int cols) {
+	if (!values || rows <= 0 || cols <= 0)
+		return 0;
+	vector<vector<int>> dp(rows + 1, vector<int>(cols + 1, 0));
+	for (int i = 1; i <= cols; ++i) {
+		dp[1][i] = dp[1][i - 1] + values[i - 1];
+		cout << dp[1][i] << endl;
+	}
+	for (int i = 2; i <= rows; ++i) {
+		dp[i][1] = dp[i - 1][1] + values[(i - 1)*cols];
+		cout << dp[i][1] << endl;
+	}
+	for (int i = 2; i <= rows; ++i) {
+		for (int j = 2; j <= cols; ++j) {
+			dp[i][j] = values[(i - 1)*cols + j - 1] + max(dp[i][j - 1], dp[i - 1][j]);
+		}
+	}
+	return dp[rows][cols];
+}
+48.最长不含重复字符的字符字串
+int longestSubstingWithoutDuplincation(const string &s) {
+	if (s.empty())
+		return 0;
+	int visit[26] = { 0 };
+	int max_long = 0;
+	int begin = 0;
+	for (int i = 0; i < s.size(); ++i) {
+		++visit[s[i] - 'a'];
+		if (visit[s[i] - 'a'] >= 2) {
+			max_long = max(max_long,i - begin);
+			while (visit[s[i] - 'a'] != 1) {
+				--visit[s[begin++]-'a'];
+			}
+		}
+	}
+	return max_long;
+}
+49.丑数
+int GetuglyNumber(int index) {
+	if (index <= 0)
+		return 0;
+	int *uglyNumber = new int[index];
+	uglyNumber[0] = 1;
+	int *pMultiply2 = uglyNumber;
+	int *pMultiply3 = uglyNumber;
+	int *pMultiply5 = uglyNumber;
+	int nextuglynumber = 1;
+	while (nextuglynumber < index) {
+		int min_number = min(min(*pMultiply2 * 2, *pMultiply3 * 3), *pMultiply5 * 5);
+		uglyNumber[nextuglynumber] = min_number;
+		while (*pMultiply2 * 2 <= uglyNumber[nextuglynumber])
+			++pMultiply2;
+		while (*pMultiply3 * 3 <= uglyNumber[nextuglynumber])
+			++pMultiply3;
+		while (*pMultiply5 * 5 <= uglyNumber[nextuglynumber])
+			++pMultiply5;
+		++nextuglynumber;
+	}
+	int ugly = uglyNumber[index - 1];
+	delete[] uglyNumber;
+	return ugly;
+}
+50.第一个只出现一次的字符（hash表，略）
+51.数组中的逆序对(归并排序算法)
+void union_A_B(int *data, int begin, int medium, int end, int &sum) {
+	int *temp_data = new int[end - begin + 1];
+	int i_b = begin, i_m = medium + 1;
+	int k = 0;
+	while (i_b <= medium && i_m <= end) {
+		if (data[i_b] > data[i_m])
+		{
+			temp_data[k++] = data[i_m++];
+			sum += medium - i_b + 1;
+		}
+		else {
+			temp_data[k++] = data[i_b++];
+		}
+	}
+	int flag = 1;
+	while (i_b <= medium) {
+		if(flag==0)
+			sum += medium - i_b + 1;
+		temp_data[k++] = data[i_b++];
+		flag = 0;
+	}
+	while (i_m <= end) {
+		temp_data[k++] = data[i_m++];
+	}
+	for (int i = 0; i < end - begin + 1; ++i) {
+		data[begin + i] = temp_data[i];
+	}
+	delete[]temp_data;
+}
+void findPairs(int *data, int begin, int end, int &sum) {
+	 if (begin < end) {
+		findPairs(data, begin, (begin + end) / 2, sum);
+		findPairs(data, (begin + end) / 2 + 1, end, sum);
+		union_A_B(data,  begin, (begin + end) / 2, end, sum);
+	}
+}
+int InversesPairs(int *data, int length) {
+	if (data == NULL || length <= 0)
+		return 0;
+	int sum = 0;
+	findPairs(data, 0, length - 1, sum);
+	return sum;
+}
+52.两个链表的第一个公共节点；
+ListNode *GetNode(ListNode* pHead1,ListNode* pHead2,int k){
+	while(k--){
+		pHead1=pHead1->next;
+	}
+	while(pHead1&&pHead2){
+		if(pHead1==pHead2)
+			return pHead1;
+		pHead1=pHead1->next;
+		pHead2=pHead2->next;
+	}
+	return NULL;
+}
+ListNode* FindFirstCommonNode(ListNode* pHead1,ListNode* pHead2){
+	if(!pHead1||!pHead2)
+		return NULL;
+	int k1=0,k2=0;
+	ListNode* p1=pHead1;
+	ListNode* p2=pHead2;
+	while(p1){
+		++k1;
+		p1=p1->next;
+	}
+	while(p2){
+		++k2;
+		p2=p2->next;
+	}
+	if(k1>k2)
+		return GetNode(pHead1,pHead2,k1-k2);
+	else
+		return GetNode(pHead2,pHead1,k2-k1);
+}
+53.1在排序数组中查找数字
+int GetFisrtK(int *data, int begin, int end, int K) {
+	if (begin <= end) {
+		int medium = (begin + end) / 2;
+		if (data[medium] < K)
+			return GetFisrtK(data, medium + 1, end, K);
+		else if (data[medium] > K)
+			return GetFisrtK(data, begin, medium - 1, K);
+		else {
+			if (medium == 0 || data[medium - 1] != K)
+				return medium;
+			else
+				return GetFisrtK(data, begin, medium - 1, K);
+		}
+	}
+	else
+		return -1;
+}
+int GetLastK(int *data, int length, int begin, int end, int K) {
+	if (begin <= end) {
+		int medium = (begin + end) / 2;
+		if (data[medium] < K)
+			return GetLastK(data, length, medium + 1, end, K);
+		else if (data[medium] > K)
+			return GetLastK(data, length, begin, medium - 1, K);
+		else {
+			if (medium == length - 1 || data[medium + 1] != K)
+				return medium;
+			else
+				return GetLastK(data, length, medium + 1, end, K);
+		}
+	}
+	else
+		return -1;
+}
+int GetNumberOfK(int *data, int length, int K) {
+	if (!data || length <= 0)
+		return -1;
+	int first = GetFisrtK(data, 0, length - 1, K);
+	int end = GetLastK(data, length,0, length-1, K);
+	if (first > -1 && end > -1)
+		return end - first+1;
+	else
+		return -1;
+}
+53.2 0~n-1中缺失的数字
+int GetMissingNumber(const int *numbers,int length){
+	if(!numbers||length<=0)
+		return -1;
+	int begin=0,end=length-1;
+	int medium=0;
+	while(begin<=end){
+		medium=(begin+end)/2;
+		if(medium==numbers[medium])
+			begin=medium+1;
+		else{
+			if(medium==0||numbers[medium-1]==medium-1)
+				return medium;
+			else
+				end=medium-1;
+		}
+	}
+	return -1;
+}
+54.二叉搜索树的第k大节点（中序遍历到k,略）
+55.1二叉树的深度
+int TreeDeepth(BinaryTreeNode* pRoot){
+    if(pRoot==NULL)
+		return 0;
+	int Nleft=TreeDeepth(pRoot->left);
+	int Nright=TreeDeepth(pRoot->right);
+	return Nleft>Nright?(Nleft+1):(Nright+1);
+}
+55.2.1平衡二叉树
+bool isbalanced(BinaryTreeNode* pRoot){
+	if(pRoot==NULL)
+		return true;
+	int Nleft=TreeDeepth(pRoot->left);
+	int Nright=TreeDeepth(pRoot->right);
+	int diff=Nleft-Nright;
+	if(diff>1||diff<-1)
+		return false;
+	return isbalanced(pRoot->left)&&isbalanced(pRoot->right);
+}
+55.2.2平衡二叉树（后序解决重复情况）
+bool isBalanced(BinaryTreeNode* pRoot,int *deepth){
+	if(!pRoot){
+		*deepth=0;
+		return true;
+	}
+	int left,right;
+	if(isBalanced(pRoot->left,left)&&isBalanced(pRoot->right.right)){
+		int diff=left-right;
+		if(diff<=1||diff>=-1){
+			*deepth=left>right?(left+1):(right+1);
+			return true;
+		}
+	}
+	return false;
+}
+bool isbalanced(BinaryTreeNode* pRoot){
+	int deepth=0;
+	return isBalanced(pRoot,&deepth);
+}
+56.1数组中数字出现的次数
+void findNumsAppear(int data[], int length, int *num1, int *num2) {
+	if (!data || length < 1)
+		return;
+	int num = 0;
+	for (int i = 0; i < length; ++i) {
+		num = num ^ data[i];
+	}
+	if (num == 0)
+		return;
+	int i = 0;
+	while (!((num >> i++) & 1));
+	*num1 = 0;
+	i = i - 1;
+	for (int j = 0; j < length; ++j) {
+		if ((data[j] >> i) & 1)
+			*num1 = *num1^data[j];
+	}
+	*num2 = *num1^num;
+}
+56.2唯一出现的数字，其他三/五次......等；
+int findNumsAppear(int data[], int length) {
+	if (!data || length <= 0)
+		return -1;
+	int bitmap[32] = { 0 };
+	for (int i = 0; i < length; ++i) {
+		int j = 0;
+		while (j < 32) {
+			bitmap[j] += (data[i] >> j) & 1;
+			++j;
+		}
+	}
+	int result = 0;
+	for (int i = 0; i < 32; ++i) {
+		if (bitmap[i] % 3 != 0)
+			result += (bitmap[i] % 3) << i;
+	}
+	return result;
+}
+57.和为S的数字（前后指针，略）
+57.1 和为S的连续正数序列（还是两个指针，只是这时两个指针都从头开始）
+void FindContinuousSequence(int target) {
+	if (target < 3)
+		return;
+	int first = 1, last = 2;
+	int sum = first + last;
+	while (first < last&&last <= target / 2 + 1) {
+		if (sum < target)
+		{
+			++last;
+			sum += last;
+		}
+		else if (sum > target) {
+			sum -= first;
+			++first;
+		}
+		else {
+			for (int i = first; i <= last; ++i) {
+				cout << i << ends;
+			}
+			cout << endl;
+			++last;
+			sum += last;
+		}
+	}
+}
+58.1翻转字符串
+void Reverse(char *pBegin, char *pEnd) {
+	if (!pBegin || !pEnd)
+		return;
+	while (pBegin < pEnd) {
+		char temp = *pBegin;
+		*pBegin = *pEnd;
+		*pEnd = temp;
+		++pBegin;
+		--pEnd;
+	}
+}
+char *ReverseSentence(char *data) {
+	if (!data)
+		return NULL;
+	char *first = NULL;
+	char *last = data;
+	for (; *last != '\0'; ++last) {
+		if (*last != ' ') {
+			if (!first)
+				first = last;
+		}
+		else if (*last == ' '&&first) {
+			Reverse(first, last - 1);
+			first = NULL;
+		}
+	}
+	if (first) {
+		Reverse(first, last - 1);
+	}
+	Reverse(data, last - 1);
+	return data;
+}
+58.2左旋转字符串
+void Reverse(char *pBegin, char *pEnd) {
+	if (!pBegin || !pEnd)
+		return;
+	while (pBegin < pEnd) {
+		char temp = *pBegin;
+		*pBegin = *pEnd;
+		*pEnd = temp;
+		++pBegin;
+		--pEnd;
+	}
+}
+char *LeftRotateString(char* pStr,int n){
+	if(!pStr||n<=0)
+		return pStr;
+	char *str=pStr;
+	char *str1=pStr;
+	int length=0;
+	while(*str1!='\0')
+	{
+		++length;
+		++str1;
+	}
+	n=n%length;
+	if(n==0)
+		return pStr;
+	while(*str!='\0'&&n--)
+		++str;
+	Reverse(pStr,str-1);
+	Reverse(str,str1-1);
+	Reverse(pStr,str1-1);
+	return pStr;
+}
+59.队列的最大值
+vector<int> maxInWindows(const vector<int> &num,unsigned int size){
+	vector<int> result;
+	if(num.size()<size)
+		return result;
+	deque<int> index;
+	for(int i=0;i<size;++i){
+		while(!index.empty()&&num[i]>=num[index.back()])
+			index.pop_back();
+		index.push_back(i);
+	}
+	for(int i=size;i<num.size();++i){
+		result.push_back(num[index.front()]);
+		while(!index.empty()&&num[i]>=num[index.back()])
+			index.pop_back();
+		if(!index.empty()&&index.front()<=(int)(i-size))
+			index.pop_front();
+		index.push_back(i);
+	}
+	result.push_back(num[index.front()]);
+	return result;
+}
+60.1n个骰子的点数
+void count_of_number(int num[], int number, int &total,int n) {
+	if (number <= 0||n<=0) {
+		if (number == 0&&n==0)
+			++total;
+	}
+	else {
+		for (int i = 1; i <= 6; ++i) {
+			count_of_number(num, number - i, total,n-1);
+		}
+	}
+}
+void PrintProbability(int number,int n) {
+		if (number <= 0||n<=0)
+		{
+			cout << 0 << endl;
+			return;
+		}
+		int num[6] = { 1,2,3,4,5,6 };
+		int total = 0;
+		count_of_number(num, number, total,n);
+		long long total_sum = 1;
+		while (n--) {
+			total_sum *= 6;
+		}
+		cout << total << " " << total_sum << endl;
+		cout << total * 1.0 / total_sum << endl;
+	}
+60.1基于循环的情况：
+int g_maxavlue=6;
+void PrintProbability(int number){
+	if(number<1)
+		return;
+	int *pProbability[2];
+	pProbability[0]=new int[g_maxavlue*number+1];
+	pProbability[1]=new int[g_maxavlue*number+1];
+	for(int i=0;i<g_maxavlue*number+1;++i){
+		pProbability[0][i]=0;
+		pProbability[1][i]=0;
+	}
+	int flag=0;
+	for(int i=1;i<=g_maxavlue;++i){
+		pProbability[flag][i]=1;
+	}
+	for(int k=2;k<=number;++k){
+		for(int i=0;i<k;++i){
+			pProbability[1-flag][i]=0;
+		}
+		for(int i=k;i<g_maxavlue*number+1;++i){
+			pProbability[1-flag][i]=0;
+			for(int j=1;j<=i&&j<=g_maxavlue;++j)
+				pProbability[1-flag][i]+=pProbability[flag][i-j];
+		}
+		flag=1-flag;
+	}
+	double total=pow((double)g_maxValue,number);
+	for(int i=number;i<=g_maxavlue*number+1;++i){
+		double ratio=double(pProbability[flag][i])/total;
+		cout<<ratio<<ends;
+	}
+	delete[] pProbability[0];
+	delete[] pProbability[1];
+}
+61.扑克中的顺子
+bool isContinue(vector<int> number)
+{
+	if (number.size() == 5) {
+		sort(number.begin(), number.end());
+		int num_zero = 0;
+		for (int i = 0; i<5; ++i)
+		{
+			if (number[i] == 0)
+				++num_zero;
+		}
+		for (int i = 1; i<5; ++i) {
+			if (number[i - 1] == number[i]&&number[i]!=0)
+				return false;
+		}
+		int difference = 0;
+		for (int i = num_zero + 1; i<5; ++i) {
+			difference += number[i] - number[i - 1] - 1;
+		}
+		if (difference <= num_zero)
+			return true;
+		else
+			return false;
+	}
+	return false;
+}
+62.圆圈中最后剩下的数字（约瑟夫环问题）:递归式子:n==1时，为0，n>1时，f(n)=[f(n-1)+m]%n;
+int lastRemaining(unsigned int n,unsigned int m){
+	if(n<1||m<1)
+		return -1;
+	int last=0;
+	for(int i=2;i<=n;i++){
+		last=(last+m)%i;
+	}
+	return last;
+}
+63.股票最大利润
+int maxDiff(vector<int> number) {
+	if (number.size()<2)
+		return 0;
+	int min_number = number[0];
+	int max_profit = 0;
+	for (int i = 1; i < number.size();++i) {
+		if (number[i]>min_number)
+			max_profit = max(max_profit, number[i] - min_number);
+		else
+			min_number = number[i];
+	}
+	return max_profit;
+}
+64.求1+2+3...+n;不能使用乘除法、各类条件判断等；
+class Temp {
+public:
+	Temp() { ++N; sum += N; }
+	static void Reset() { N = 0; sum = 0; }
+	static unsigned int Resum() { return sum; }
+private:
+	static unsigned int N;
+	static unsigned int sum;
+};
+unsigned int Temp::N = 0;
+unsigned int Temp::sum = 0;
+unsigned int Sun_solution(unsigned int n) {
+	Temp::Reset();
+	Temp *a = new Temp[n];
+	delete[]a;
+	a = nullptr;
+	return Temp::Resum();
+}
+65.不用加减乘除做加法
+int Add(int num1, int num2) {
+	int sum, carry;
+	do {
+		sum = num1 ^ num2;
+		carry = (num1 & num2) << 1;
+		num1 = sum;
+		num2 = carry;
+	} while (num2);
+	return num1;
+}
+66.构建乘积数组（略）
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+
+		
+		

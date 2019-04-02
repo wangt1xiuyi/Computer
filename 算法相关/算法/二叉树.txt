@@ -1,0 +1,63 @@
+1.计算二叉树高度
+#include<iostream>
+
+#include<vector>
+
+#include <algorithm>
+
+using namespace std;
+
+int main() 
+{
+	int n;
+
+	int tmp;
+	
+cin >> n;
+
+	int height[100000] = { 1 };
+	
+int result = 0;
+
+	vector<vector<int> >relation;
+	
+for (int i = 0; i<n - 1; i++)
+ {
+		
+   vector<int> tt;
+		
+cin >> tmp;
+		
+tt.push_back(tmp);
+		
+cin >> tmp;
+		
+tt.push_back(tmp);
+		
+relation.push_back(tt);
+	
+}
+
+//假设节点值小的在高层，所以排序，当前节点的高度等于父亲节点高度加一
+	//测试用例似乎也是这个规律，就相当于层次遍历
+	
+sort(relation.begin(), relation.end());
+
+for (int i = 0; i<n - 1; i++)
+ {
+
+height[relation[i][1]] = height[relation[i][0]] + 1;
+
+if (result<height[relation[i][1]])
+			
+result = height[relation[i][1]];
+
+}
+	
+cout << result << endl;
+
+	return 0;
+
+}
+
+2.

@@ -1,0 +1,340 @@
+用于求解最优问题，通常采用自底向上的方法
+
+1.求钢条切割问题（自顶向下、时间复杂度大）
+#include<iostream>
+#include<algorithm>
+using namespace std; 
+int cut(int *p, int n)
+{
+	int qq = -10000;
+	if (n == 0)
+		return 0;
+	else
+	{
+		for(int i=1;i<=n;++i)
+		qq=max(qq,p[i]+cut(p, n-i));
+		return qq;
+	}
+
+}
+int main()
+{
+	int p[] = {0,1,5,8,9,10,17,17,20,24,30};
+	int n;
+	cin >> n;
+	//n = n - 1;
+	int q = cut(p, n);
+	cout << q << endl;
+}
+
+2.求钢条切割问题（自底向上、时间复杂度小、少了递归，空间开销变小）
+#include<iostream>
+#include<algorithm>
+using namespace std; 
+int cut(int *p, int n)
+{
+	int qq = -10000;
+	int r[100] = { 0 };
+	for (int j = 1; j <= n; ++j)
+	{
+		int qq = -10000;
+		for (int i =1; i <= j;++i) {
+			qq = max(qq, p[i] + r[j - i]);
+				r[j] = qq;
+		}
+	}
+	return r[n];
+}
+int main()
+{
+	int p[] = {0,1,5,8,9,10,17,17,20,24,30};
+	int n;
+	cin >> n;
+	//n = n - 1;
+	int q = cut(p, n);
+	cout << q << endl;
+}
+3.动态规划求袋鼠过河
+#include<iostream>
+
+#include<vector>
+
+#include<algorithm>
+
+using namespace std;
+
+int GetCount(vector<int>& num)
+
+{
+	
+int n = num.size();
+	
+vector<int> dp(n + 1, 10000);
+
+	dp[0] = 1;
+	
+for (int i = 1; i <= n; i++)
+	
+{
+		
+for (int j = i - 1; j >= 0; j--)
+		
+{
+			if (num[j] == 0)
+				
+continue;
+		
+	if (j + num[j] >= i)
+				
+dp[i] = min(dp[i], dp[j] + 1);
+		
+}
+	
+}
+	
+if (dp[n] == 10000)
+		
+return -1;
+	
+else
+		
+return dp[n] - 1;
+
+}
+
+
+int main()
+
+{
+	
+int N = 0;
+	
+cin >> N;
+	
+vector<int> num(N, 0);
+	
+for (int i = 0; i < N; i++)
+		
+cin >> num[i];
+	
+cout << GetCount(num) << endl;
+	
+return 0;
+
+}
+4.动态规划求最长子序列
+#include<iostream>
+
+#include<vector>
+
+#include<string>
+
+#include<algorithm>
+
+using namespace std;
+
+int findLCS(string A, int n, string B, int m)
+
+{
+	
+int p[301][301] = { 0 };
+
+for (int i = 1; i<=n; ++i)
+	
+{
+		
+for (int j = 1; j<=m; ++j)
+		
+{
+			
+if (A[i-1] == B[j-1])
+	
+		
+{
+				
+p[i][j] = p[i - 1][j - 1] + 1;
+	
+		
+}
+			
+else
+			
+{
+				
+p[i][j] = max(p[i][j - 1], p[i - 1][j]);
+
+}
+
+		
+}
+	
+}
+	                                                 
+return p[n][m];
+
+}
+
+int main()
+{
+	
+string A, B;
+	
+cin >> A >> B;
+	
+int n = A.size();
+	
+int m = B.size();
+	
+int c = findLCS(A, n, B, m);
+	
+cout << c << endl;
+
+}
+5.0-1背包问题
+有N件物品和一个容量为V的背包。第i件物品的费用是c[i]，价值是w[i]。求解将哪些物品装入背包可使这些物品的费用总和不超过背包容量，且价值总和最大。
+则其状态转移方程便是：
+
+f[i][v]=max{f[i-1][v],f[i-1][v-c[i]]+w[i]}（放i）
+f[i][v]=f[i-1][v](不放i)
+
+#include<iostream>
+
+#include<vector>
+
+#include<algorithm>
+
+using namespace std;
+
+int main()
+
+{
+	
+int N = 7, c = 150;
+	
+int W[8] = {0, 35,30,6,50,40,10,25 }, P[8] = {0,10,40,30,50,35,40,30 };
+
+int f[151][151] = { 0 };
+	
+for (int i = 1; i <= N; ++i)
+	
+{
+		
+for (int v = 0; v <= c; ++v)
+	
+{
+			
+if (v - W[i] >= 0)
+				
+f[i][v] = max(f[i - 1][v], f[i - 1][v - W[i]] + P[i]);
+			
+else
+				
+f[i][v] = f[i - 1][v];
+		
+}
+	
+}
+	
+for (int i = 0; i <= 150; ++i)
+		
+cout << f[N][i] << endl;
+
+}
+
+（改进）
+#include<iostream>
+
+#include<vector>
+
+#include<algorithm>
+
+using namespace std;
+
+int main()
+
+{
+	
+int N = 7, c = 150;
+	
+int W[8] = {35,30,6,50,40,10,25 }, 
+P[8] = {10,40,30,50,35,40,30 };
+	
+int f[1000] = { 0 };
+	
+for (int i = 0; i < N; ++i)
+	
+{
+		
+for (int v = c; v >= 0; --v)
+		
+{
+			
+if (v - W[i] >= 0)
+				
+f[v] = max(f[v], f[v - W[i]] + P[i]);
+		
+}
+	
+}
+	
+for (int i = 0; i <= 150; ++i)
+		
+cout << f[i] << endl;
+
+}
+
+6.合唱队（最长递增序列）
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
+ 
+int main(void)
+{
+    int n;
+    while (cin >> n)
+    {
+        int tmp;
+        vector<int> queue;
+        vector<int> dp_1(n, 1);
+        vector<int> dp_2(n, 1);
+          
+        for (int i = 0; i < n; ++i)
+        {
+            cin >> tmp;
+            queue.push_back(tmp);
+        }
+        for (int i = 0; i < n; ++i)
+        {
+            for (int j = i - 1; j >= 0; --j)
+            {
+                if (queue[i] > queue[j] && dp_1[i] < dp_1[j] + 1)
+                    dp_1[i] = dp_1[j] + 1;
+            }
+        }
+  
+        reverse(queue.begin(), queue.end());
+        for (int i = 0; i < n; ++i)
+        {
+            for (int j = i - 1; j >= 0; --j)
+            {
+                if (queue[i] > queue[j] && dp_2[i] < dp_2[j] + 1)
+                    dp_2[i] = dp_2[j] + 1;
+            }
+        }
+        reverse(dp_2.begin(), dp_2.end());
+  
+        int max = -1;
+        int sum;
+        for (int i = 0; i < n; ++i)
+        {
+            sum = dp_1[i] + dp_2[i];
+            if (sum > max)
+            {
+                max = sum;
+            }
+        }
+        cout << n - max + 1 << endl;
+    }
+    return 0;
+}

@@ -1,0 +1,26 @@
+有如下两种常用方法。
+一、可以通过调用C库函数itoa实现。
+1 原型。
+char*itoa(int value,char*string,int radix);
+2 头文件。
+stdlib.h
+3 功能。
+将value的值，转换为字符串，并存到string中，如果转化后的字符串长度超过radix，那么只存radix位。
+4 样例。
+int i=1234;
+char buf[10];
+ itoa(i, buf, 10);
+执行后buf内容为字符串"1234"。
+二、通过sprintf格式化输出到字符串中。
+itoa并不是C语言标准库函数，所以并不是每个平台均支持该函数。当不支持时，可以用sprintf函数来达到同样效果。
+1 原型。
+int sprintf( char *buffer, const char *format, [ argument] … );
+2 头文件。
+stdio.h
+3 功能。
+类似于printf，根据格式化字符串format，将后续参数列表中的参数逐个输出。不过输出目标不是标准输出终端，而是字符串buffer。
+4 样例。
+int i=1234;
+char buf[10];
+sprintf_s(buf,"%d",i);
+执行后buf内容同样为字符串"1234"。

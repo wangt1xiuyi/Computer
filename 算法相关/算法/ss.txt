@@ -1,0 +1,345 @@
+#include<iostream>
+#include<string>
+#include<vector>
+using std::string;
+using std::vector;
+using std::cin;
+using std::cout;
+using std::endl;
+int sort1(vector<int> ss,int y)
+{
+	int nn=0,p=0,q=0,z=1000000;
+	for(int i=0;i<y;++i)
+	{
+		int m=ss[i];
+		int n=ss[i];
+		for(int j=i+1;j<y;++j)
+		{
+			
+			if(ss[j]>m)
+				m=ss[j];
+			else
+				++nn;
+		}
+		for(int j=i-1;j>=0;--j)
+		{
+			if(ss[j]<n)
+				n=ss[j];
+			else
+				++p;
+		}
+		q=nn+p;
+		if(q<z)
+			z=q;
+		nn=0;
+		p=0;
+	}
+	return z;
+}
+int sort2(vector<int> ss,int y)
+{
+	int nn=0,p=0,q=0,z=1000000;
+	auto b=ss.size();
+	for(int i=y;i<b;++i)
+	{
+		int m=ss[i];
+		int n=ss[i];
+		for(int j=i+1;j<b;++j)
+		{
+			
+			if(ss[j]<m)
+				m=ss[j];
+			else
+				++nn;
+		}
+		for(int j=i-1;j>=y;--j)
+		{
+			if(ss[j]>n)
+				n=ss[j];
+			else
+				++p;
+		}
+		q=nn+p;
+		if(q<z)
+			z=q;
+		nn=0;
+		p=0;
+	}
+	return z;
+}
+
+int main()
+{
+	vector<int> s;
+	vector<int> s1;
+	int i;
+	while(cin >> i)
+		s.push_back(i);
+	auto b=s.size();
+	int m=0,n=0;
+	for(int j=0;j<b;++j)
+	{
+		
+		m=sort1(s,j);
+		n=sort2(s,j);
+
+}
+zz=s[m];
+		auto p=compute(zz);
+	b.push_back(p);
+	}
+	for(int k=0;k<b.size();++k)
+	cout<<b[k]<<endl
+
+
+
+2.实现数字倒着输出
+#include<iostream>
+#include<string>
+#include<vector>
+#include<stdlib.h>
+using namespace std;
+int main()
+{
+	int i;
+	cin>>i;
+	char s[100000];
+	char s1[100000]={'/0'};
+	sprintf(s,"%d",i);
+	int len=strlen(s);
+	int m=0,p=0,q=0;
+	for(int j=len-1;j>=0;--j)
+	{
+		for(int k=j+1;k<len;++k)
+		{
+			if(s[k]==s[j])
+				break;
+			else
+				++p;
+		}
+		if(j==len-1-p)
+			{
+				s1[q]=s[j];
+				++q;
+		}
+		p=0;
+	}
+	if(strlen(s1)==1)
+	{
+		for(int j=0;j<strlen(s1);++j)
+		cout<<s1[j]<<"";
+		cout<<endl;
+	}
+	else
+	{
+		if(s1[0]=='0')
+			{for(int j=1;j<strlen(s1);++j)
+		cout<<s1[j]<<"";
+		cout<<endl;}
+		else
+			{for(int j=0;j<strlen(s1);++j)
+		cout<<s1[j]<<"";
+		cout<<endl;}
+}
+}
+//friend Sales_data add(const Sales_data&,const Sales_data&);
+   // friend std::ostream &print(std::ostream&,const Sales_data&);
+    //friend std::istream &read(std::istream&,Sales_data&);
+	// C++11标准 Sales_data() = default;
+	//Sales_data(const std::string &s):bookNo(s) {}
+	//Sales_data(const std::string &s, unsigned n,double p):
+	//bookNo(s),units_sold(n),revenue(p*n){ }
+	//Sales_data(std::istream &);
+3.输入第一行为一个正整数n(1≤n≤1000),下面n行为n个字符串(字符串长度≤100),字符串中只含有大小写字母。
+#include <iostream>
+#include<vector>
+#include<string>
+using namespace std;
+int max(int a,int b)
+{
+	int c=0;
+	if(a>=b)
+		c=a;
+	else
+		c=b;
+	return c;
+}
+bool compare(string s1,string s2)
+{
+	char s3[100];
+	char s4[100];
+	int a=s1.size();
+	int k=0;
+	int b=s2.size();
+	for(int i=0;i<a;++i)
+	{
+		s3[i]=s1[i];
+	}
+    for(int i=0;i<b;++i)
+	{
+		s4[i]=s2[i];
+	}
+	int c=max(a,b);
+		for(int i=0;i<c;++i)
+	{
+		if(s3[i]!=s4[i])
+		{
+			if(s3[i]>s4[i])
+			{
+				return 1;
+				break;
+		}
+		else
+			{
+				return 0;
+				break;
+			}
+		}
+		else
+			++k;
+	}
+		if(k==c)
+			return 1;
+		else return 0;
+	}
+void exchange(string &s5,string &s6)
+{
+	string s7;
+	s7=s5;
+	s5=s6;
+	s6=s7;
+}
+int main()
+{
+	int t;
+	cin>>t;
+	vector<string> s;
+	string s1;
+	for(int i=0;i<t;++i)
+	{
+		cin>>s1;
+	s.push_back(s1);
+	}
+	int b=s.size();
+	int m=b;
+	for(int i=0;i<b-1;++i)
+	{
+		for(int i=0;i<m-1;++i)
+		{
+			if(compare(s[i],s[i+1]))
+		     	exchange(s[i],s[i+1]);
+		}
+	     --m;
+	}
+
+	for(int i=0;i<b;++i)
+		cout<<s[i]<<endl;
+
+}
+
+
+
+德才论
+#include<iostream>
+#include<vector>
+#include<string>
+using namespace std;
+void exchange(int &a, int &b)
+{
+	int c;
+	c = a;
+	a = b;
+	b = c;
+}
+void sort1(vector<int> &p)
+{
+	int k = 0;
+	int m = p.size();
+	for (int j = 0; j < p.size()/3-1; j = j + 1)
+	{
+		for (int i = m-2; i >=3; i = i - 3)
+		{
+			if (p[i] + p[i + 1] > p[i - 3] + p[i - 2])
+			{
+				exchange(p[i], p[i - 3]);
+				exchange(p[i - 1], p[i - 4]);
+				exchange(p[i + 1], p[i - 2]);
+			}
+			if (p[i] + p[i + 1] == p[i - 3] + p[i - 2])
+			{
+				if (p[i] > p[i - 3])
+				{
+					exchange(p[i], p[i - 3]);
+					exchange(p[i - 1], p[i - 4]);
+					exchange(p[i + 1], p[i - 2]);
+				}
+				if (p[i] == p[i - 3])
+				{
+					if (p[i - 1] < p[i - 4])
+					{
+						exchange(p[i], p[i - 3]);
+						exchange(p[i - 1], p[i - 4]);
+						exchange(p[i + 1], p[i - 2]);
+					}
+				}
+			}
+		}
+	}
+	for (int i = 0; i <p.size(); ++i)
+	{
+		++k;
+		if (k % 3 == 0)
+			cout << p[i] << endl;
+		else
+			cout << p[i] << " ";
+	}
+}
+int main()
+{
+	string s, s1;
+	int N, l, h,d;
+	cin >> N >> l >> h;
+	vector<int> student;
+	vector<int> first;
+	vector<int> second;
+	vector<int> third;
+	vector<int> forth;
+	for (int i = 0; i < N * 3; ++i)
+	{
+		cin >> d;
+		student.push_back(d);
+	}
+	for (int i = 0; i < N * 3; i = i + 3)
+	{
+		if (student[i + 1] >= h&&student[i + 2] >= h)
+		{
+			first.push_back(student[i]);
+			first.push_back(student[i + 1]);
+			first.push_back(student[i + 2]);
+		}
+		if (student[i + 1] >= h&&student[i + 2] < h&&student[i + 2] >= l)
+		{
+			second.push_back(student[i]);
+			second.push_back(student[i + 1]);
+			second.push_back(student[i + 2]);
+		}
+		if (student[i + 1] < h&&student[i + 1] >= l&&student[i + 2] < h&&student[i + 2] >= l&&student[i + 1] >= student[i + 2])
+		{
+			third.push_back(student[i]);
+			third.push_back(student[i + 1]);
+			third.push_back(student[i + 2]);
+		}
+		if (student[i + 1] < h&&student[i + 1] >= l&&student[i + 2] >= l&&student[i + 1] < student[i + 2])
+		{
+			forth.push_back(student[i]);
+			forth.push_back(student[i + 1]);
+			forth.push_back(student[i + 2]);
+		}
+	}
+	cout <<  (first.size() + second.size() + third.size() + forth.size())/3 << endl;
+	sort1(first);
+	sort1(second);
+	sort1(third);
+	sort1(forth);
+}
+	

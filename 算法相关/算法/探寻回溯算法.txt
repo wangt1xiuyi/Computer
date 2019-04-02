@@ -1,0 +1,150 @@
+回溯算法
+回溯算法也算是遍历算法的一种，回溯算法是对Brute-Force算法的一种改进算法，一个典型的应用是走迷宫问题，当我们走一个迷宫时，如果无路可走了，那么我们就可以退一步，再在其他的路上尝试一步，如果还是无路可走，那么就再退一步，尝试新的路，直到走到终点或者退回到原点。
+1.全排列
+#include <iostream>
+using namespace std;
+void Grial(int a[], int n, int m)
+{
+	if (n == m)
+	{
+		for (int i = 0; i < m; i++)
+		{
+			cout << a[i] << " ";
+		}
+		cout << endl;
+	}
+	else
+	{
+		for (int i = n; i < m; i++)
+		{
+			std::swap(a[i], a[n]);
+			Grial(a, n + 1, m);
+			std::swap(a[i], a[n]);//回溯
+		}
+	}
+}
+int main()
+{
+	int a[] = { 1, 2, 3, 4 };
+	Grial(a, 0, sizeof(a) / sizeof(int));
+	return 0;
+}
+2.组合排列（n中选m个）
+#include <iostream>
+#include <stack>
+using namespace std;
+stack<int> st;
+void Grial(int a[], int m,int n, int length)
+{
+    if (st.size() == length)
+    {
+        stack<int> temp = st;
+        while (temp.empty() == false)
+        {
+            cout << temp.top() << " ";
+            temp.pop();
+        }
+        cout << endl;
+        return;
+    }
+    else
+    {
+        for (int i = m; i < n; i++)
+        {
+            st.push(a[i]);
+            Grial(a, i+1,n, length);
+            st.pop();//回溯
+        }
+    }
+}
+int main()
+{
+    int a[] = {1,2,3,4,5,6,7};
+    Grial(a,0, sizeof(a) / sizeof(int), 3);
+}
+
+3.迷宫问题
+#include<iostream>
+
+#include<vector>
+
+using namespace std;
+
+
+int N, M; //分别代表行和列
+
+vector<vector<int>> maze;//迷宫矩阵
+
+vector<vector<int>> path_temp;//存储当前路径，第一维表示位置
+
+vector<vector<int>> path_best;//存储最佳路径
+
+
+void MazeTrack(int i, int j)
+
+{
+	
+maze[i][j] = 1;//表示当前节点已走，不可再走
+	
+path_temp.push_back({ i, j });//将当前节点加入到路径中
+
+	
+if (i == N - 1 && j == M - 1) //判断是否到达终点
+		
+if (path_best.empty() || path_temp.size() < path_best.size())
+			
+path_best = path_temp;
+
+	
+if (i - 1 >= 0 && maze[i - 1][j] == 0)//探索向上走是否可行
+		
+MazeTrack(i - 1, j);
+	
+if (i + 1 < N && maze[i + 1][j] == 0)//探索向下走是否可行
+		
+MazeTrack(i + 1, j);
+	
+if (j - 1 >= 0 && maze[i][j - 1] == 0)//探索向左走是否可行
+		
+MazeTrack(i, j - 1);
+	
+if (j + 1 < M && maze[i][j + 1] == 0)//探索向右走是否可行
+		
+MazeTrack(i, j + 1);
+	
+maze[i][j] = 0; //恢复现场，设为未走
+	
+path_temp.pop_back();
+
+}
+
+int main()
+{
+	
+while (cin >> N >> M)
+
+{
+		
+maze = vector<vector<int>>(N, vector<int>(M, 0));
+		
+path_temp.clear();
+		
+path_best.clear();
+		
+for (auto &i : maze)
+			
+for (auto &j : i)
+				
+cin >> j;
+		
+MazeTrack(0, 0);//回溯寻找迷宫最短通路
+		
+for (auto i : path_best)
+			
+cout << '(' << i[0] << ',' << i[1] << ')' << endl;//输出通路
+	
+}
+	
+return 0;
+
+}

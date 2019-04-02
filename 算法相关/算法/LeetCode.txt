@@ -1,0 +1,906 @@
+3.Longest Substring Without Repeating Characters
+//最长未重复子串
+class Solution {
+public:
+    int lengthOfLongestSubstring(string s) {
+        vector<int> dp(256,-1);
+        int maxlen=0,result=-1;
+        for(int i=0;i!=s.size();++i)
+        {
+            if(dp[s[i]]>result)
+                result=dp[s[i]];
+            dp[s[i]]=i;
+            maxlen=max(maxlen,i-result);
+        }
+        return maxlen;
+    }
+};
+4.Median of Two Sorted Arrays
+//求两数组中间值
+ double findMedianSortedArrays(vector<int>& nums1, vector<int>& nums2) {
+        double a;
+        vector<int> num;
+        for(size_t i=0;i<nums1.size();++i)
+        {
+            num.push_back(nums1[i]);
+        }
+        for(size_t i=0;i<nums2.size();++i)
+        {
+            num.push_back(nums2[i]);
+        }
+        sort(num.begin(),num.end());
+        int m=nums1.size();
+        int n=nums2.size();
+        if((m+n)%2==0)
+            a=(double)(num[(m+n)/2]+num[(m+n)/2-1])/2;
+        else
+            a=num[(m+n)/2];
+        return a;
+    }
+5.Longest Palindromic Substring
+//最长回文子串
+（1.暴力法（时间复杂度过高）
+string longestPalindrome(string s) {
+      int maxlen=0,start=0;
+        if(s.empty())
+            return NULL;
+        int length=s.size();
+        if(length==1)
+            return s;
+        if(length>1)
+        {
+            for(int i=0;i<length;++i)
+        {
+            for(int j=i+1;j<length;++j)
+            {
+                int tmp1,tmp2;
+                for(tmp1=i,tmp2=j;tmp1<tmp2;++tmp1,--tmp2)
+                {
+                    if(s[tmp1]!=s[tmp2])
+                        break;
+                }
+                if(tmp1>=tmp2&&j-i+1>maxlen)
+                {
+                    start=i;
+                    maxlen=j-i+1;
+                }
+            }
+        }
+            if(maxlen>0)
+        return s.substr(start,maxlen);
+            else
+                return s.substr(start,1);
+        }
+    }
+（2.经典解法
+string longestPalindrome(string s) {
+    if (s.empty()) return "";
+    if (s.size() == 1) return s;
+    int min_start = 0, max_len = 1;
+    for (int i = 0; i < s.size();) {
+      if (s.size() - i <= max_len / 2) break;
+      int j = i, k = i;
+      while (k < s.size()-1 && s[k+1] == s[k]) ++k; // Skip duplicate characters.
+      i = k+1;
+      while (k < s.size()-1 && j > 0 && s[k + 1] == s[j - 1]) { ++k; --j; } // Expand.
+      int new_len = k - j + 1;
+      if (new_len > max_len) { min_start = j; max_len = new_len; }
+    }
+    return s.substr(min_start, max_len);
+}
+6.ZigZag Conversion
+// Z字形序列输出
+string convert(string s, int numRows) {
+        if(numRows==1)
+            return s;
+        string result="";
+        int len=s.size();
+        for(int i=0;i<numRows;++i)
+        {
+            int a1=2*(numRows-i-1);
+            int a2=2*i;
+            int a=i;
+            if(a<len)
+                result+=s.at(a);
+            while(1)
+            {
+                a+=a1;
+                if(a>=len)
+                    break;
+                if(a1)
+                    result+=s.at(a);
+                a+=a2;
+                if(a>=len)
+                    break;
+                if(a2)
+                result+=s.at(a);
+            }
+        }
+        return result;
+        
+    }
+9.Palindrome Number
+//回文数字
+bool isPalindrome(int x) {
+        if(x<0||(x!=0&&x%10==0)) return false;
+            else
+            {
+                int sum=0;
+                while(x>sum)
+                {
+                    sum=sum*10+x%10;
+                    x=x/10;
+                }
+                return (x==sum)||(x==sum/10);
+            }
+        
+    }
+10.Regular Expression Matching 
+//正则表达式
+11. Container With Most Water 
+ //容器装最多水
+12.Integer to Roman
+//z整数转换为罗马数字
+string intToRoman(int num) {
+        
+string A[]={"","I","II","III","IV","V","VI","VII","VIII","IX"};
+        
+string B[]={"","X","XX","XXX","XL","L","LX","LXX","LXXX","XC"};
+        
+string C[]={"","C","CC","CCC","CD","D","DC","DCC","DCCC","CM"};
+       
+ string D[]={"","M","MM","MMM"};
+        
+string result="";
+       
+ result+=D[num/1000];
+       
+ num=num-(num/1000)*1000;
+        
+result+=C[num/100];
+       
+ num=num-(num/100)*100;
+       
+ result+=B[num/10];
+        
+num=num-(num/10)*10;
+       
+ result+=A[num];
+        
+return result;
+    
+}
+13.Roman to Integer
+//罗马数字转换为整数
+int romanToInt(string s) {
+        int a[256]={0};
+        a['I']=1;
+        a['V']=5;
+        a['X']=10;
+        a['L']=50;
+        a['C']=100;
+        a['D']=500;
+        a['M']=1000;
+        int result=a[s[s.size()-1]];
+        for(int i=s.size()-1;i>=1;--i)
+        {
+            if(a[s[i]]<=a[s[i-1]])
+             result+=a[s[i-1]];
+            else
+                result-=a[s[i-1]];
+        }
+        return result;
+    }
+14.
+//最长字符数组的公共前缀
+string longestCommonPrefix(vector<string>& strs) {
+        string a="";
+        if(strs.empty())
+            return a;
+        else
+        {
+            int k=0,b=strs.size()-1;
+        for(size_t i=0;i<strs[0].size();++i)
+        {
+            for(size_t j=1;j<strs.size();++j)
+            {
+                if(i<strs[j].size()&&strs[0][i]==strs[j][i])
+                   ++k;
+                else
+                    break;
+            }
+            if(k==b)
+                a+=strs[0][i];
+            else
+                break;
+            k=0;
+        }
+        return a;
+        }
+    }
+15.3sum
+//3和
+1）时间复杂度过高，暴力法
+vector<vector<int>> threeSum(vector<int>& nums) 
+{
+        
+vector<vector<int> > result;
+        
+vector<int> t1;
+       
+ int num=nums.size(),n=0;
+        
+for(int i=0;i<num-2;++i)
+        
+{
+            
+for(int j=i+1;j<num-1;++j)
+           
+ {
+               
+ for(int k=j+1;k<num;++k)
+                
+{
+                   
+ if(nums[i]+nums[j]+nums[k]==0)
+                    
+{
+                        
+t1.push_back(nums[i]);
+                        
+t1.push_back(nums[j]);
+                        
+t1.push_back(nums[k]);
+                        
+sort(t1.begin(),t1.end());
+                        
+if(!result.empty())
+                        
+{
+                            
+for(size_t m=0;m<result.size();++m)
+                           
+ {
+                                
+if(result[m]!=t1)
+                                   
+ ++n;
+                                
+else
+                                   
+ break;
+                            
+}
+                            
+if(n==result.size())
+                           
+ result.push_back(t1);
+                           
+ n=0;
+                       
+ }
+                        
+else
+                       
+ result.push_back(t1);
+                        
+t1.clear();
+                   
+ }
+                
+}
+            
+}
+       
+ }
+       
+ return result;
+    
+}
+2）C++ two-pointes solution (easy way to handle duplicaiton).
+vector<vector<int>> threeSum(vector<int>& nums) {
+        vector<vector<int> > result;
+        vector<int> t1;
+        sort(nums.begin(),nums.end());
+        int num=nums.size();
+        for(int i=0;i<num;++i)
+        {
+            if((i>0)&&(nums[i]==nums[i-1]))
+                continue;
+            int l=i+1,h=num-1;
+            while(l<h)
+            {
+                int s=nums[i]+nums[l]+nums[h];
+                if(s>0)
+                    --h;
+                if(s<0)
+                    ++l;
+                if(s==0)
+                {
+                    t1.push_back(nums[i]);
+                    t1.push_back(nums[l]);                      
+                    t1.push_back(nums[h]);
+                    result.push_back(t1);
+                    t1.clear();
+                    while(nums[h]==nums[h-1])
+                        --h;
+                    while(nums[l]==nums[l+1])
+                        ++l;
+                    ++l;
+                    --h;
+                }
+            }  
+        }
+        return result;
+    }
+16.3 sum closet
+//3个最近和
+int threeSumClosest(vector<int>& nums, int target) {
+    if(nums.size() < 3) return 0;
+    int closest = nums[0]+nums[1]+nums[2];
+    sort(nums.begin(), nums.end());
+    for(int first = 0 ; first < nums.size()-2 ; ++first) {
+        if(first > 0 && nums[first] == nums[first-1]) continue;
+        int second = first+1;
+        int third = nums.size()-1;            
+        while(second < third) {
+            int curSum = nums[first]+nums[second]+nums[third];
+            if(curSum == target) return curSum;
+            if(abs(target-curSum)<abs(target-closest)) {
+                closest = curSum;
+            }
+            if(curSum > target) {
+                --third;
+            } else {
+                ++second;
+            }
+        }
+    }
+    return closest;
+}
+17.Letter Combinations of a Phone Number
+//电话号码字符串组合
+
+18.4 sum
+//4和
+vector<vector<int>> fourSum(vector<int>& nums, int target) {
+        
+vector<vector<int>> result;
+        
+vector<int> r;
+       
+ if(nums.size()<4) return result;
+        
+sort(nums.begin(),nums.end());
+        
+for(size_t i=1;i<nums.size()-2;++i)
+        
+{
+            
+for(size_t j=i+1;j<nums.size()-1;++j)
+            
+{
+                
+int k=0,p=0;
+                
+int m=nums.size()-1;
+                
+while(k<i&&m>j)
+               
+ {
+                    
+int sum=nums[k]+nums[i]+nums[j]+nums[m];
+                   
+ if(sum>target)
+                       
+ --m;
+                    
+if(sum<target)
+                       
+ ++k;
+                   
+ if(sum==target)
+                   
+ {
+                       
+ r.push_back(nums[k]);
+                        
+r.push_back(nums[i]);
+                        
+r.push_back(nums[j]);
+                       
+ r.push_back(nums[m]);
+                    
+    if(!result.empty())
+                     
+   {
+                          
+  for(size_t n=0;n<result.size();++n)
+                     
+       {
+                              
+  if(r==result[n])
+                                  
+  break;
+                              
+  else
+                                   
+ ++p;
+                          
+  }
+                           
+ if(p==result.size())
+                                
+ result.push_back(r);
+                            
+p=0;
+                      
+  }
+                       
+ else
+                           
+ result.push_back(r);
+                      
+  r.clear();
+                       
+ while(nums[k]==nums[k+1])
+                       
+  ++k;
+                       
+ while(nums[m]==nums[m-1])
+                  
+          --m;
+                 
+       --m;
+                    
+    ++k;
+                   
+ }
+                
+         
+   }
+       
+ }
+        
+}
+         
+   return result;
+   
+ }
+19.Remove Nth Node From End of List 
+//从链表里面删除某个结点
+20.Valid Parentheses 
+//有效字符串（利用栈的先进后出概念，从而优化问题）
+bool isValid(string s) {
+        stack<char> c;
+        for(char& b : s)
+        {
+            switch(b){
+                case '(':
+                case '{':
+                case '[': c.push(b);break;
+                case ')': if(c.empty()||c.top()!='(') return false;else c.pop();break;
+                case '}': if(c.empty()||c.top()!='{') return false;else c.pop();break;
+                case ']': if(c.empty()||c.top()!='[') return false;else c.pop();break;        
+        }
+        }
+        return c.empty();
+    }
+22.Generate Parentheses
+//括弧匹配
+vector<string> result;
+    void ad(string str,int left,int right)
+    {
+        if(left==0&&right==0) result.push_back(str);
+        if(left!=0) ad(str+"(",left-1,right);
+        if(right!=0&&right>left) ad(str+")",left,right-1);       
+    }
+    vector<string> generateParenthesis(int n) {
+        string str;
+        ad(str,n,n);
+        return result;
+    }
+26.Remove Duplicates from Sorted Array
+//移除多余的重复序列
+int removeDuplicates(vector<int>& nums) {
+        int k=0;
+            if(nums.size()<1) return 0;
+        for(int i=1;i<nums.size();++i)
+        {
+            if(nums[i]==nums[i-1]) ++k;
+            else
+                nums[i-k]=nums[i];
+        }
+        return nums.size()-k;
+    }
+27.Remove Element
+//移除数组当中的指定元素
+int removeElement(vector<int>& nums, int val)
+ {
+       
+ int k=0;
+       
+ for(int i=0;i<nums.size();++i)
+      
+  {
+           
+ if(nums[i]==val) ++k;
+         
+   else
+             
+   nums[i-k]=nums[i];
+      
+  }
+       
+ return nums.size()-k;
+  
+  }
+28.Implement strStr()
+//字符串匹配
+int strStr(string haystack, string needle) {
+        int m=haystack.size();
+        int n=needle.size();
+        if(n==0) return 0;
+        for(int i=0;i<m-n+1;++i)
+        {
+            int j=0;
+            for(;j<n;++j)
+            {
+                if(haystack[i+j]!=needle[j])
+                    break;
+            }
+            if(j==n)
+                return i;
+        }
+        return -1;
+    }
+
+30.Substring with Concatenation of All Words 
+//所有单词连接的子串
+31.NEXT Permutation
+void nextPermutation(vector<int>& nums) {
+        	int k = -1;
+    	for (int i = nums.size() - 2; i >= 0; i--) {
+    		if (nums[i] < nums[i + 1]) {
+    			k = i;
+    			break;
+    		}
+    	} 
+    	if (k == -1) {
+    	    reverse(nums.begin(), nums.end());
+    	    return;
+    	}
+    	int l = -1;
+    	for (int i = nums.size() - 1; i > k; i--) {
+    		if (nums[i] > nums[k]) {
+    			l = i;
+    			break;
+    		} 
+    	} 
+    	swap(nums[k], nums[l]);
+    	reverse(nums.begin() + k + 1, nums.end()); 
+
+    }
+35.Search Insert Position 
+ //二分查找
+int searchInsert(vector<int>& nums, int target) {
+        sort(nums.begin(),nums.end());
+        int low=0;
+        int high=nums.size()-1;
+        int mid=0;
+        while(low<=high)
+        {
+            mid=(low+high)/2;
+            if(nums[mid]<target)
+                low=mid+1;
+            if(nums[mid]>target)
+                high=mid-1;
+            if(nums[mid]==target)
+                return mid;
+        }
+        if(nums[mid]<target)
+            return mid+1;
+        else
+            return mid;
+    }
+36.Valid Sudoku
+//判断九宫格是否符合标准
+bool isValidSudoku(vector<vector<char>>& board) {
+       int a[9][9]={0};
+        int b[9][9]={0};
+        int c[9][9]={0};
+        for(int i=0;i<9;++i)
+        {
+            for(int j=0;j<9;++j)
+            {
+                if(board[i][j]!='.')
+                {
+                    int num=board[i][j]-'0'-1;
+                    int k=i/3*3+j/3;
+                    if(a[i][num]||b[j][num]||c[k][num])
+                        return false;
+                    a[i][num]=b[j][num]=c[k][num]=1;
+                }
+            }
+        }
+        return true;
+    }
+37.Sudoku Solver
+//九宫格解决办法
+38.Count and Say
+//算数说（to_string）
+string countAndSay(int n) {
+        if(n==0) return "";
+        string s="1";
+        while(--n)
+        {
+            string result="";
+            for(int i=0;i<s.size();++i)
+            {
+                int count=1;
+             while ((i + 1 < s.size()) && (s[i] == s[i + 1])){
+            count++;    
+               i++;
+            }
+                result+=to_string(count)+s[i];
+            }
+            s=result;
+        }
+        return s;
+    }
+39.Combination Sum
+//回溯算法
+41.First Missing Positive
+//第一个不是正整数位置
+int firstMissingPositive(vector<int>& nums) {
+        int n=nums.size();
+        for(int i=0;i<n;)
+        {
+            if(nums[i]>0&&nums[i]<=n&&nums[i]!=nums[nums[i]-1])
+                swap(nums[i],nums[nums[i]-1]);
+            else
+                ++i;
+        }
+        for(int i=0;i<n;++i)
+        {
+            if(nums[i]!=i+1)
+                return i+1;
+        }
+        return n+1;
+        }
+42.Trapping Rain Water 
+ //捕捉雨水
+int trap(vector<int>& height) {
+        int left=0,right=height.size()-1;
+        int maxright=0,maxleft=0;
+        int re=0;
+        while(left<=right)
+        {
+            if(height[left]<=height[right])
+            {
+                if(height[left]>=maxleft) maxleft=height[left];
+                else
+                    re+=maxleft-height[left];
+                ++left;
+            }
+            else
+            {
+            if(height[right]>=maxright) maxright=height[right];
+                else
+                    re+=maxright-height[right];
+                --right;
+            }
+        }
+        return re;
+    }
+43.Multiply Strings
+//乘法字符串
+string multiply(string num1, string num2) {
+        string re;
+        int l1=num1.size();
+        int l2=num2.size();
+        if(l1==0||l2==0) return "0";
+        vector<int> s(l1+l2,0);
+        for(int i=0;i<l1;++i)
+        {
+            int co=0;
+            int n1=num1[l1-i-1]-'0';
+            for(int j=0;j<l2;++j)
+            {
+                int n2=num2[l2-j-1]-'0';
+                int sum=n1*n2+s[i+j]+co;
+                co=sum/10;
+                s[i+j]=sum%10;
+            }
+            if(co>0)
+                s[i+l2]+=co;
+        }
+       int m=l1+l2-1;
+        while(s[m]==0) --m;
+        if(m<0) return "0";
+        
+        for(int i=m;i>=0;--i)
+        re+=to_string(s[i]);
+        return re;
+        }
+45.JUMP GAME II
+//跳跃游戏
+ int jump(vector<int>& nums) {
+        int n=nums.size(),start=0,end=0,step=0;
+        while(end<n-1)
+        {
+            ++step;
+            int maxend=end+1;
+            for(int i=start;i<=end;++i)
+            {
+                if(i+nums[i]>=n-1) return step;
+                maxend=max(i+nums[i],maxend);
+            }
+            start=end+1;
+            end=maxend;
+        }
+        return step;
+    }
+46.Permutations 
+//全排列
+vector<vector<int>> result;
+    void quan(vector<int>& nums,int n,int m)
+    {
+        if(n==m)
+        {
+            result.push_back(nums);
+        }
+        else
+        {
+            for(int i=n;i<m;++i)
+            {
+            swap(nums[i], nums[n]);
+			quan(nums, n + 1, m);
+			swap(nums[i], nums[n]);
+            }
+        }
+    }
+    vector<vector<int>> permute(vector<int>& nums) {
+        int m=nums.size();
+        quan(nums,0,m);
+        return result;
+    }
+47.Permutations II
+
+48.Rotate Image
+//旋转图片
+void rotate(vector<vector<int>>& matrix) {
+        int n = matrix.size();
+        int a = 0;
+        int b = n-1;
+        while(a<b){
+            for(int i=0;i<(b-a);++i){
+                swap(matrix[a][a+i], matrix[a+i][b]);
+                swap(matrix[a][a+i], matrix[b][b-i]);
+                swap(matrix[a][a+i], matrix[b-i][a]);
+            }
+            ++a;
+            --b;
+        }
+
+    }
+
+50.POW(x,n)
+//x的n次方
+double myPow(double x, int n) {
+    if(n<0) return 1/x * myPow(1/x, -(n+1));
+    if(n==0) return 1;
+    if(n==2) return x*x;
+    if(n%2==0) return myPow( myPow(x, n/2), 2);
+    else return x*myPow( myPow(x, n/2), 2);
+}
+53.Maximum Subarry
+//最大子串
+int maxSubArray(vector<int>& nums) {
+        int ans,sum=0;
+        ans=nums[0];
+        for(int i=0;i<nums.size();++i)
+        {
+            sum+=nums[i];
+            ans=max(sum,ans);
+            sum=max(sum,0);
+        }
+        return ans;
+    }
+55.Jump GAME
+//是否可以到达
+ bool canJump(vector<int>& nums) {
+      int i=0,n=nums.size();
+        for(int reach=0;i<n&&i<=reach;++i)
+            reach=max(i+nums[i],reach);
+        return i==n;
+        
+    }
+58.Length of Last Word
+//最后一个单词长度
+int lengthOfLastWord(string s) {
+        vector<int> a;
+        if(s.empty()) return 0;
+        int last=s.size()-1;
+        while(s[last]==' '&&last>=0) --last;
+        if(last<0) return 0;
+        for(int i=0;i<=last;++i)
+        {
+            if(s[i]==' ')
+                a.push_back(i);
+        }
+        if(a.empty())
+            return last+1;
+        else
+            return last-a[a.size()-1];
+        
+    }
+67.Add Binary
+//求二进制和
+1）.string addBinary(string a, string b) {
+        int co=0;
+        string c,result;
+        if(a.size()>=b.size())
+        {
+            for(int i=b.size()-1;i>=0;--i)
+            {
+                c+=to_string(((b[i]-'0')+(a[i+a.size()-b.size()]-'0')+co)%2);
+                co=((b[i]-'0')+(a[i+a.size()-b.size()]-'0')+co)/2;
+            }
+            for(int j=a.size()-b.size()-1;j>=0;--j)
+            {
+                c+=to_string((a[j]-'0'+co)%2);
+                co=(a[j]-'0'+co)/2;
+            }
+            if(co==1)
+            c+=to_string(co);
+            for(int i=c.size()-1;i>=0;--i)
+             result+=c[i];
+            return result;
+        }
+        else
+        {
+            for(int i=a.size()-1;i>=0;--i)
+            {
+                c+=to_string(((a[i]-'0')+(b[i+b.size()-a.size()]-'0')+co)%2);
+                co=((a[i]-'0')+(b[i+b.size()-a.size()]-'0')+co)/2;
+            }
+            for(int j=b.size()-a.size()-1;j>=0;--j)
+            {
+                c+=to_string((b[j]-'0'+co)%2);
+                co=(b[j]-'0'+co)/2;
+            }
+            if(co==1)
+            c+=to_string(co);
+            for(int i=c.size()-1;i>=0;--i)
+             result+=c[i];
+            return result;
+
+        }
+    }
+2).
+string addBinary(string a, string b)
+    {
+        string s = "";
+        
+        int c = 0, i = a.size() - 1, j = b.size() - 1;
+        while(i >= 0 || j >= 0 || c == 1)
+        {
+            c += i >= 0 ? a[i --] - '0' : 0;
+            c += j >= 0 ? b[j --] - '0' : 0;
+            s = char(c % 2 + '0') + s;
+            c /= 2;
+        }
+        
+        return s;
+    }
+70.climbing Stairs
+//爬楼梯
+ int climbStairs(int n) {
+        int dp[10000]={0};
+        dp[0]=1;
+        dp[1]=1;
+        for(int i=2;i<=n;++i)
+            dp[i]=dp[i-1]+dp[i-2];
+        return dp[n];
+    }

@@ -1,0 +1,83 @@
+#include <fstream>
+#include <iostream>
+using namespace std;
+
+
+int main()
+{
+    //文本文件打开方式设为可读写
+//     fstream outfile("f1.dat",ios::out||ios::in);
+//     if (!outfile)
+//     {
+//         cout<<"open error!"<<endl;
+//          exit(1);
+ //      }
+
+//       char a[10];
+//     cout<<"输入十个数字"<<endl;
+//     //写入文件中
+//     for (int i=0;i<10;i++)
+//     {
+//         cin>>a[i];
+//         outfile<<a[i]<<' ';
+//     }
+//     //从文件读取
+//     for (int i=0;i<10;i++)
+//     {
+//         outfile>>a[i];
+//         cout<<a[i]<<' ';
+//     }
+//     outfile.close();
+    
+
+    //从键盘读入一行字符，将其中的字母存在磁盘文件
+//     ofstream outfile("f2.dat");
+//     if (!outfile)
+//     {
+//         cout<<"open error"<<endl;
+//             exit(1);
+ //     }
+//     char c[80];
+//     cin.getline(c,80);//最多提取80个字符，或者遇到默认终止符\n结束
+//     for (int i=0;c[i]!='\0';i++)
+//     {
+//         if (c[i]>=65&&c[i]<=90||c[i]>=97&&c[i]<=122)
+//         {
+//             //outfile.put(c[i]);或者
+//             outfile<<c[i];
+//             cout<<c[i];
+//         }
+//     }
+//     cout<<endl;
+//     outfile.close();
+
+    //从上面的文件读入字符，将其中的小写字母改写为大写字母在存在f3文件
+    ifstream infile("f2.dat");
+    if (!infile)
+    {
+        cout<<"openerrr";
+          exit(1);
+      }
+    ofstream outfile3("f3.dat");
+    if (!outfile3)
+    {
+        cout<<"error";
+          exit(1);
+    }
+    char ch;
+    while (infile>>ch/*infile.get(ch)*/)
+    {
+        if (ch>=97&&ch<=122)
+        {
+            ch=ch-32;
+        }
+        outfile3<<ch;
+        cout<<ch;
+    }
+    cout<<endl;
+    infile.close();
+    outfile3.close();
+
+    return 0;
+
+}

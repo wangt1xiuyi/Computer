@@ -1,0 +1,700 @@
+1.约瑟夫环
+两种解法：
+	第一种模拟循环链表，利用list;
+第二种：
+	利用数学方法分析；
+	首先第一个数肯定是(m-1)%n;那么剩下的数重排列有一个映射关系p(x)=(x-k-1)%n;那么反映射为
+q(x)=(x+k+1)%n;因此f(n,m)=g(n-1,m)=q(f(n-1,m))=(f(n-1)+k+1)%n;又因为k=(m-1)%n；所以得到递推式
+为：
+	f(n,m)=(f(n-1,m)+m)%n;(n>1)
+	f(n,m)=0 (n=1)
+所以：
+	#include<iostream>
+	using namespace std;
+	int main(){
+		int n,m;
+		int result=0;
+		cin>>n>>m;
+		if(n==1)
+			cout<<result<<endl;
+		else{
+			for(int i=2;i<=n;++i){
+				result=(result+m)%i;
+			}
+			cout<<result<<endl;
+		}
+	}
+2.最长重复子串
+#include<iostream>
+#include<string>
+#include<vector>
+#include<algorithm>
+using namespace std;
+int getcommom_len(string s1, string s2) {
+	int i = 0;
+	for (; i < s1.size() && i < s2.size(); ++i) {
+		if (s1[i] != s2[i])
+			break;
+	}
+	return i;
+}
+int main() {
+	string str;
+	cin >> str;
+	vector<string> strs;
+	for (int i = 0; i < str.size(); ++i) {
+		strs.push_back(str.substr(i));
+	}
+	sort(strs.begin(), strs.end());
+	int maxlen = 0;
+	for (int i = 0; i < strs.size()-1; ++i) {
+		int len = getcommom_len(strs[i], strs[i + 1]);
+		maxlen = max(maxlen, len);
+	}
+	cout << maxlen << endl;
+}
+3.旋转数组查找
+int find_roate_array(int a[], int length, int target) {
+	if (length <= 0 || a == NULL)
+		return -1;
+	int begin = 0, end = length - 1;
+	while (begin <= end) {
+		int mid = (begin + end) / 2;
+		if (a[mid] == target)
+			return mid;
+		else if (a[mid] > target) {
+			if (a[begin] < a[mid]) {
+				if (a[begin] <= target)
+					end = mid - 1;
+				else
+					begin = mid + 1;
+			}
+			else if (a[begin] > a[mid])
+				end = mid - 1;
+			else
+				begin = mid + 1;
+		}
+		else {
+			if (a[end] > a[mid])
+			{
+				if (a[end] >= target) {
+					begin = mid + 1;
+				}
+				else
+					end =mid  - 1;
+			}
+			else if (a[end] < a[mid])
+				begin = mid + 1;
+			else
+				begin = mid + 1;
+		}
+	}
+	return -1;
+}
+4.字典树
+struct treeNode {
+	treeNode *child[26];
+	bool is_end;
+	treeNode() :is_end(false) {
+		for (int i = 0; i < 26; ++i) {
+			child[i] = 0;
+		}
+	}
+};
+class dict_tree {
+public:
+	dict_tree() {}
+	~dict_tree() {
+		for (int i = 0; i<node_vec.size(); ++i) {
+			delete node_vec[i];
+		}
+	}
+	void insert(string s) {
+		treeNode *ptr = &_root;
+		for (int i = 0; i < s.size(); ++i) {
+			int index = s[i] - 'a';
+			if (!ptr->child[i])
+			{
+				ptr->child[i] = newNode();
+				cout << i << endl;
+			}
+			ptr = ptr->child[i];
+		}
+		ptr->is_end = true;
+	}
+	bool search(string s) {
+		treeNode *ptr = &_root;
+		for (int i = 0; i < s.size(); ++i) {
+			int index = s[i] - 'a';
+			if (!ptr->child[i])
+				return false;
+			ptr = ptr->child[i];
+		}
+		return ptr->is_end;
+	}
+private:
+	vector<treeNode *> node_vec;
+	treeNode _root;
+	treeNode *newNode() {
+		treeNode *node = new treeNode();
+		node_vec.push_back(node);
+		return node;
+	}
+};
+5.加油站问题--dp
+从start出发， 如果油量足够， 可以一直向后走 end++；  油量不够的时候，
+start向后退  最终 start == end的时候，如果有解一定是当前 start所在位置
+int canCompleteCircuit(vector<int> &gas, vector<int> &cost)
+{
+	int start = gas.size() - 1;
+	int end = 0;
+	int sum = gas[start] - cost[start];
+	while (start > end) {
+		if (sum >= 0) {
+			sum += gas[end] - cost[end];
+			++end;
+		}
+		else {
+			--start;
+			sum += gas[start] - cost[start];
+		}
+	}
+	return sum >= 0 ? start : -1;
+
+}
+6.依赖关系题
+#include<iostream>
+#include<vector>
+#include<algorithm>
+using namespace std;
+struct node {
+	bool depend;
+	int val;
+	int id;
+	vector<node> next;
+	node(int id,int v) :id(id),val(v), depend(false) {}
+};
+vector<node> p;
+void search(node &point, int temp, int &max_value, int &step)
+{
+	if (point.next.empty())
+	{
+		max_value = max(max_value, temp);
+		++step;
+	}
+	else {
+		for (int i = 0; i<point.next.size(); ++i) {
+			search(p[point.next[i].id], temp + point.next[i].val, max_value, step);
+		}
+	}
+}
+int main()
+{
+	int m, n;
+	cin >> m >> n;
+	for (int i = 0; i <m; ++i) {
+		int v;
+		cin >> v;
+		p.push_back(node(i,v));
+	}
+	for (int i = 0; i<n; ++i) {
+		int r, t;
+		cin >> r >> t;
+		p[r - 1].next.push_back(p[t - 1]);
+		p[t - 1].depend = true;
+	}
+	int max_value = 0, step = 0;
+	for (int i = 0; i<m; ++i) {
+		cout << p[i].next.size() << endl;
+		if (p[i].depend == false) {
+			search(p[i], p[i].val, max_value, step);
+		}
+	}
+	cout << step << " " << max_value << endl;
+}
+7.atoi函数实现，需要判断前置非空，从‘+’、‘-’、‘0-9’数字开始，如果中间有其他的，则中断；
+还需要判断溢出问题。
+int atoi(const char *str) {
+	if (str == NULL)
+	{
+		cout << "字符串为空" << endl;
+		return 0;
+	}
+	int i = 0, flag = 1, digit = 0;
+	while (str[i] != '/0' &&str[i]==' ')
+		++i;
+	if (str[i] != '/0'&&str[i] == '+')
+		++i;
+	else if (str[i] != '/0'&&str[i] == '-') {
+		++i;
+		flag = -1;
+	}
+	while (str[i] != '/0'&&str[i] >= '0'&&str[i] <= '9') {
+		if(digit>INT_MAX/10||(digit==INT_MAX/10&&str[i]-'0'>INT_MAX%10))
+			return flag == -1 ? INT_MIN : INT_MAX;
+		digit = digit * 10 + str[i] - '0';
+		++i;
+	}
+	return digit * flag;
+}
+8.KMP算法
+KMP算法:是一种改进的字符串匹配算法(O(m+n))
+void cal_next(char *str,int next[],int len){
+	int j = 0;
+	next[0] = j;
+	for (int i = 1; i < len; ++i) {
+		while (j > 0 && str[j] != str[i])
+			j = next[j-1];
+		if (str[j] == str[i])
+			++j;
+		next[i] = j;
+	}
+	for (int i = 0; i < len; ++i)
+		cout << next[i] << ends;
+}
+int KMP(char *str, int len, char *ptr, int pen) {
+	int *next = new int[pen];
+	cal_next(ptr, next, pen);
+	int j = 0;
+	for (int i = 0; i < len; ++i) {
+		while (j > 0 && ptr[j] != str[i])
+			j = next[j - 1];
+		if (str[i] == ptr[j]) {
+			++j;
+		}
+		if (j == pen) {
+			return i - pen + 1;
+		}
+	}
+	return -1;
+}
+9.汉诺塔问题
+void haoi(int n,char x,char y,char z,int &step) {
+	if (n == 1) {
+		cout << n << "from" << x << "to" << z << endl;
+		++step;
+	}
+	else {
+		haoi(n - 1, x, z, y,step);
+		cout << n << "from" << x << "to" << z << endl;
+		++step;
+		haoi(n - 1, y, x, z,step);
+	}
+}
+总步数：（1<<n)-1;
+10.非递归版的二叉树遍历
+#include<iostream>
+#include<string>
+#include<stack>
+using namespace std;
+struct binary_tree_node_t { 
+	binary_tree_node_t *left; /* 左孩子 */ 
+	binary_tree_node_t *right; /* 右孩子 */ 
+	int elem; /* 结点的数据 */
+	binary_tree_node_t(int v) :elem(v), left(NULL), right(NULL) {}
+};
+//非递归先序
+void preorder(binary_tree_node_t *root) {
+	if (root == NULL)
+		return;
+	stack<binary_tree_node_t *> Q;
+	Q.push(root);
+	while (!Q.empty()) {
+		binary_tree_node_t *q= Q.top();
+		Q.pop();
+		cout << q->elem << endl;
+		if (q->right)
+			Q.push(q->right);
+		if (q->left)
+			Q.push(q->left);
+	}
+}
+//非递归中序
+void midorder(binary_tree_node_t *root) {
+	if (root == NULL)
+		return;
+	stack<binary_tree_node_t *> Q;
+	binary_tree_node_t *p = root;
+	while (!Q.empty()||p!=nullptr) {
+		if (p!=nullptr) {
+			Q.push(p);
+			p = p->left;
+		}
+		else{
+			p= Q.top();
+			Q.pop();
+			cout << p->elem << endl;
+			p = p->right;
+		}
+	}
+}
+//非递归后序
+void inorder(binary_tree_node_t *root) {
+	if (root == NULL)
+		return;
+	stack<binary_tree_node_t *> Q;
+	Q.push(root);
+	while (!Q.empty()) {
+		while (Q.top()->left)
+		{
+			Q.push(Q.top()->left);
+		}
+		binary_tree_node_t *temp = nullptr;
+		while (!Q.empty()) {
+			binary_tree_node_t *q = Q.top();
+			Q.pop();
+			if (q->right == temp)
+			{
+				cout << q->elem << endl;
+				temp = q;
+			}
+			else {
+				Q.push(q);
+				Q.push(q->right);
+				break;
+			}
+		}
+	}
+}
+int main()
+{
+	binary_tree_node_t *root = new binary_tree_node_t(1);
+	binary_tree_node_t *root1 = new binary_tree_node_t(2);
+	binary_tree_node_t *root2 = new binary_tree_node_t(3);
+	binary_tree_node_t *root3 = new binary_tree_node_t(4);
+	binary_tree_node_t *root4 = new binary_tree_node_t(5);
+	binary_tree_node_t *root5 = new binary_tree_node_t(6);
+	binary_tree_node_t *root6 = new binary_tree_node_t(7);
+	root->left = root1;
+	root->right = root2;
+	root1->left = root3;
+	root1->right = root4;
+	root2->left = root5;
+	root2->right = root6;
+	preorder(root);
+	cout << endl;
+	midorder(root);
+	cout << endl;
+	inorder(root);
+}
+11.Mirror_order,时间复杂度更低
+struct binary_tree_node_t {
+	binary_tree_node_t *left; /* 左孩子 */
+	binary_tree_node_t *right; /* 右孩子 */
+	int elem; /* 结点的数据 */
+	binary_tree_node_t(int v) :elem(v), left(NULL), right(NULL) {}
+};
+void mirror_midorder(binary_tree_node_t *root) {
+	binary_tree_node_t *cur = root;
+	while (cur != NULL) {
+		if (cur->left == NULL) {
+			cout << cur->elem << ends;
+			cur = cur->right;
+		}
+		else {
+			binary_tree_node_t *node = cur->left;
+			while (node->right != NULL && node->right != cur)
+				node = node->right;
+			if (node->right == NULL) {//添加线索
+				node->right = cur;
+				cur = cur->left;
+			}
+			else {
+				cout << cur->elem << ends;
+				node->right = NULL;
+				cur = cur->right;
+			}
+		}
+	}
+}
+void mirror_preorder(binary_tree_node_t *root) {
+	binary_tree_node_t *cur = root;
+	while (cur != NULL) {
+		if (cur->left == NULL) {
+			cout << cur->elem << ends;
+			cur = cur->right;
+		}
+		else {
+			binary_tree_node_t *node = cur->left;
+			while (node->right != NULL && node->right != cur)
+				node = node->right;
+			if (node->right == NULL) {//添加线索
+				cout << cur->elem << ends;
+				node->right = cur;
+				cur = cur->left;
+			}
+			else {
+				node->right = NULL;
+				cur = cur->right;
+			}
+		}
+	}
+}
+void print_reverse(binary_tree_node_t *begin, binary_tree_node_t *from) {
+	if (from == begin)
+		cout << from->elem << ends;
+	else {
+		print_reverse(begin, from->right);
+		cout << from->elem << ends;
+	}
+}
+void mirror_inorder(binary_tree_node_t *root) {
+	binary_tree_node_t *pre=NULL;
+	binary_tree_node_t *cur=new binary_tree_node_t(0);
+	cur->left = root;
+	while (cur != NULL) {
+		if (cur->left == NULL) {
+			pre = cur;
+			cur = cur->right;
+		}
+		else {
+			binary_tree_node_t *node = cur->left;
+			while (node->right != NULL && node->right != cur)
+				node = node->right;
+			if (node->right == NULL) {//添加线索
+				node->right = cur;
+				pre = cur;
+				cur = cur->left;
+			}
+			else {
+				print_reverse(pre, cur->left);
+				node->right = NULL;
+				pre = cur;
+				cur = cur->right;
+			}
+		}
+	}
+}
+12.二叉树删除一个节点
+/**
+ * Definition for a binary tree node.
+ * struct TreeNode {
+ *     int val;
+ *     TreeNode *left;
+ *     TreeNode *right;
+ *     TreeNode(int x) : val(x), left(NULL), right(NULL) {}
+ * };
+ */
+class Solution {
+public:
+    TreeNode* deleteNode(TreeNode* root, int key) {
+        if(!root) return nullptr;
+        if(root->val==key){
+            if(!root->right)
+            {
+                TreeNode *left=root->left;
+                delete root;
+                return left;
+            }
+            else{
+                TreeNode *temp=root->right;
+                while(temp->left)
+                    temp=temp->left;
+                swap(temp->val,root->val);
+            }
+        }
+        root->left=deleteNode(root->left,key);
+        root->right=deleteNode(root->right,key);
+        return root;
+    }
+};
+13.RMQ算法+二分查询
+#include<iostream>
+#include<algorithm>
+#define maxn 200010
+using namespace std;
+int maxa[maxn][20];
+int mina[maxn][20];
+int a[maxn], b[maxn];
+void ST(int n)
+{
+	for (int i = 1; i <= n; ++i) {
+		maxa[i][0] = a[i];
+		mina[i][0] = b[i];
+	}
+	for (int j = 1; (1 << j) <= n; ++j) {
+		for (int i = 1; i + (1 << j) - 1 <= n; ++i) {
+			maxa[i][j] = max(maxa[i][j - 1], maxa[i + (1 << (j - 1))][j - 1]);
+			mina[i][j] = min(mina[i][j - 1], mina[i + (1 << (j - 1))][j - 1]);
+		}
+	}
+}
+int RMQ_max(int l, int r) {
+	int k = 0;
+	while ((1 << (k + 1)) <= r - l + 1) ++k;
+	return max(maxa[l][k], maxa[r - (1 << k) + 1][k]);
+}
+int RMQ_min(int l, int r) {
+	int k = 0;
+	while ((1 << (k + 1)) <= r - l + 1) ++k;
+	return min(mina[l][k], mina[r - (1 << k) + 1][k]);
+}
+int main() {
+	int n;
+	cin >> n;
+	for (int i = 1; i <= n; ++i) {
+		cin >> a[i];
+	}
+	for (int i = 1; i <= n; ++i) {
+		cin >> b[i];
+	}
+	int ans = 0;
+	ST(n);
+	for (int i = 1; i <= n; ++i) {
+		int l = i, r = n ;
+		int temp1 = -1, temp2;
+		while (l <= r) {
+			int mid = (l + r) >> 1;
+			int ma = RMQ_max(i, mid);
+			int mi = RMQ_min(i, mid);
+			if (ma < mi) {
+				r = mid - 1;
+				temp1 = mid;
+			}
+			else {
+				l = mid + 1;
+			}
+		}
+		if (temp1 != -1) {
+			l = i;
+			r = n ;
+			while (l <= r) {
+				int mid = (l + r) >> 1;
+				int ma = RMQ_max(i, mid);
+				int mi = RMQ_min(i, mid);
+				if (ma < mi) {
+					l = mid + 1;
+					temp2 = mid;
+				}
+				else {
+					l = mid + 1;
+				}
+			}
+			ans += temp2 - temp1 + 1;
+		}
+	}
+	cout << ans << endl;
+}
+设A[i]是要求区间最值的数列，F[i, j]表示从第i个数起连续2^j个数中的最大值。（DP的状态）
+例如：
+A数列为：3 2 4 5 6 8 1 2 9 7
+F[1，0]表示第1个数起，长度为2^0=1的最大值，其实就是3这个数。同理 F[1,1] = max(3,2) = 3, F[1，2]=max(3,2,4,5) = 5，F[1，3] = max(3,2,4,5,6,8,1,2) = 8;
+并且我们可以容易的看出F[i,0]就等于A[i]。（DP的初始值）
+我们把F[i，j]平均分成两段（因为F[i，j]一定是偶数个数字），从 i 到i + 2 ^ (j - 1) - 1为一段，i + 2 ^ (j - 1)到i + 2 ^ j - 1为一段(长度都为2 ^ (j - 1))。于是我们得到了状态转移方
+程F[i, j]=max（F[i，j-1], F[i + 2^(j-1)，j-1]）。
+2)查询
+假如我们需要查询的区间为(i,j)，那么我们需要找到覆盖这个闭区间(左边界取i，右边界取j)的最小幂（可以重复，比如查询1，2，3，4，5，我们可以查询1234和2345）。
+因为这个区间的长度为j - i + 1,所以我们可以取k=log2( j - i + 1)，则有：RMQ(i, j)=max{F[i , k], F[ j - 2 ^ k + 1, k]}。
+举例说明，要求区间[1，5]的最大值，k = log2（5 - 1 + 1）= 2，即求max(F[1, 2]，F[5 - 2 ^ 2 + 1, 2])=max(F[1, 2]，F[2, 2])；
+
+14.https://blog.csdn.net/wcybrain/article/details/56676287
+#include <iostream>
+#include<string>
+#include<stack>
+using namespace std;
+char a[128] = { 0 };
+string trans_nibolan(string s) {
+	stack<char> operators;
+	string r;
+	for (int i = 0; i < s.size(); ++i) {
+		if (isdigit(s[i]))
+			r += s[i];
+		else if (s[i] == '(')
+			operators.push(s[i]);
+		else if (s[i] == '+' || s[i] == '-'||s[i]=='*'||s[i]=='/') {
+			while (!operators.empty() && a[s[i]] <= a[operators.top()]&& operators.top()!='(') {
+				r += operators.top();
+				operators.pop();
+			}
+			operators.push(s[i]);
+		}
+		else if (s[i] == ')') {
+			while (operators.top() != '(') {
+				r += operators.top();
+				operators.pop();
+			}
+			operators.pop();
+		}
+		else if (s[i] == '#') {
+			while (!operators.empty()) {
+				r += operators.top();
+				operators.pop();
+			}
+		}
+	}
+	return r;
+}
+int nibolan_cacluate(string s) {
+	stack<int> nums;
+	for (int i = 0; i < s.size(); ++i) {
+		if (isdigit(s[i])) {
+			nums.push(s[i] - '0');
+		}
+		else {
+			int num1 = nums.top();
+			nums.pop();
+			int num2 = nums.top();
+			nums.pop();
+			switch (s[i])
+			{
+			case '+':nums.push(num2 + num1); break;
+			case '-':nums.push(num2 - num1); break;
+			case '*':nums.push(num2 * num1); break;
+			case '/':nums.push(num2 / num1);
+			}
+		}
+	}
+	return nums.top();
+}
+int main() {
+	string s;
+	cin >> s;
+	a['#'] = 0;
+	a[')'] = 1;
+	a['+'] = a['-'] = 2;
+	a['*'] = a['/'] = 3;
+	a['('] = 4;
+	s += '#';
+	string str = trans_nibolan(s);
+	cout << str << endl;
+	cout << nibolan_cacluate(str) << endl;
+}
+
+本人在华为成研所实习的五个月期间，成长迅速，收获颇多。
+排查英文文档问题119万余字；翻译量近13.7万字（中译英：10.7万字；英译中3万余字）；
+熟练使用翻译工具，如：Trados,  Tageditor,  IDP，OnePoint等；
+熟练使用翻译自检工具，如：DocMetrics,  Praticunt,  Onecheck,  Acrocheck；会使用BCManager进行上机模拟测试；
+掌握了基础的存储领域相关技术知识，如：RAID技术，DR（灾备方案）；
+存储系统及其软件特性；掌握相关存储技术术语；
+会熟练使用Office办公软件。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

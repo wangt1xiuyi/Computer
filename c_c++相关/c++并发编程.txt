@@ -1,0 +1,15 @@
+第二章 线程管理
+头文件#include<thread>
+std::thread t(线程函数),可以直接在后面添加参数，也可以类似于bind功能
+t.join()：等待线程结束
+t.detach()：分离线程，不等待
+t.joinable():判断是否已经使用join(),如果已经使用，返回false
+分离线程成为守护线程：没有任何用户接口，并且在后台运行的线程
+std::ref(参数)：转换为引用（由于直接使用，不会接收到修改的data变量）
+std::thread::hardware_concurrency():返回能同时并发在一个程序的线程数量
+std::thread::id 线程id,通过调用get_id(),或者std::this_thread::get_id()
+this_thread::sleep_for(2s):当前线程休眠2s;
+
+第三章 线程间共享数据
+c++中通过实例化std::mutex创建互斥量，通过调用lock()进行上锁，unlock()进行解锁。c++标准库为互斥量提供了
+一个RAII语法的模板类std::lack_guard，构造时加锁，析构的时后解锁。以上文件为#include<mutex>

@@ -1,0 +1,33 @@
+c++四种memory primitives：
+1） malloc()   free()  C函数       不可重载   void *p1=malloc(512) //512bytes  ;free(p1);
+2） new        delete  c++表达式   不可重载   complex<int>* p2=new complex<int>  ;delete p2;
+3） ::operator new() ::operator delete() c++函数  可重载 void *p3=::operator new(512); ::operator delete(p3);
+4） allocator<T>::allocate() allocator<T>::deallocate() c++标准库 可自由设计并与之搭配任何容器 GNUC版本(2.9以前，以后的和vc相同):void *p4=alloc::allocate(512);alloc::deallocate(p4,512); VC版：int* p4=allocator<int>().allocate(3,(int *)0);allocator<int>().dellocate(p4,3);GNU4.9版本：void* p4=allocator<int>().allocate(4);allocator<int>().dellocate((int *)p4,4);
+同时以前的alloc变为：void* p5=_gnu_cxx::_pool_alloc<int>().allocate(9);_gnu_cxx::_pool_alloc<int>().deallocate((int*)p5,9);利用内存池进行管理
+new/delete:
+   new实际在编译过程中用了分配内存（malloc）和调用对应的构造函数；delete对应的先析构再释放内存(free)。编译器可以直接调用析构，构造函数，而在编程过程中不能直接调用构造函数，可以调用析构函数；如果要直接调用则需要用placement new；
+针对数组的new/delete:
+   删除注意数组删除，避免造成内存泄露。
+placement new:
+   允许将对象建构在已经分配好的内存当中。没有placement delete,因为placement new 根本没分配memory.eg: Complex* pc=new(buf)Complex(1,2)(同意调用的是分配构造)
+重载operator new()/operator delete():减少cookie存在从而使得减少不必要的开销
+
+内存管理（内存池）：1.加快分配速度（利用重载operator new,减少malloc调用次数） 2.避免多余空间的浪费（减少cookie用量（一次malloc就两个cookie,8个字节））
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

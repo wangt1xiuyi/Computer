@@ -1,0 +1,422 @@
+﻿一、初识nginx
+1.nginx系统中以daemon的方式在后台运行，后台进程包含一个master进程和多个worker进程。
+2.nginx是以多进程的方式来工作的，当然nginx也是支持多线程的方式的，只是我们主流的方式还是多进程的方式，也是nginx的默认方式。
+3.master进程主要用来管理worker进程，包含：接收来自外界的信号，向各worker进程发送信号，监控worker进程的运行状态，当worker进
+程退出后(异常情况下)，会自动重新启动新的worker进程。
+4.基本的网络事件，则是放在worker进程中来处理了，worker进程的个数是可以设置的，一般我们会设置与机器cpu核数一致，这里面的原因
+与nginx的进程模型以及事件处理模型是分不开的
+5./nginx -s reload：重启nginx, ./nginx -s stop：停止nginx的运行
+6.nginx采用了异步非阻塞的方式来处理请求，也就是说，nginx是可以同时处理成千上万个请求的（epoll）
+7.ulimit -n：查看一个进程所能够打开的fd的最大数
+8.在nginx中connection就是对tcp连接的封装，其中包括连接的socket，读事件，写事件。
+9.在nginx中，每个进程会有一个连接数的最大上限，这个上限与系统对fd的限制不一样。
+10.nginx在实现时，是通过一个连接池来管理的，每个worker进程都有一个独立的连接池，连接池的大小是worker_connections。这里的连接池
+里面保存的其实不是真实的连接，它只是一个worker_connections大小的一个ngx_connection_t结构的数组。
+11.一个nginx能建立的最大连接数，应该是worker_connections * worker_processes。当然，这里说的是最大连接数，对于HTTP请求本地资源来
+说，能够支持的最大并发数量是worker_connections * worker_processes，而如果是HTTP作为反向代理来说，最大并发数量应该是worker_connections * worker_processes/2。
+因为作为反向代理服务器，每个并发会建立与客户端的连接和与后端服务的连接，会占用两个连接。
+12.那么，我们前面有说过一个客户端连接过来后，多个空闲的进程，会竞争这个连接，很容易看到，这种竞争会导致不公平，如果某个进程得
+到accept的机会比较多，它的空闲连接很快就用完了，如果不提前做一些控制，当accept到一个新的tcp连接后，因为无法得到空闲连接，而且
+无法将此连接转交给其它进程，最终会导致此tcp连接得不到处理，就中止掉了。很显然，这是不公平的，有的进程有空余连接，却没有处理机
+会，有的进程因为没有空余连接，却人为地丢弃连接。那么，如何解决这个问题呢？首先，nginx的处理得先打开accept_mutex选项，此时，只
+有获得了accept_mutex的进程才会去添加accept事件，也就是说，nginx会控制进程是否添加accept事件。nginx使用一个叫ngx_accept_disabled的变量
+来控制是否去竞争accept_mutex锁。在第一段代码中，计算ngx_accept_disabled的值，这个值是nginx单进程的所有连接总数的八分之一，减去剩下的空闲连接数量，
+得到的这个ngx_accept_disabled有一个规律，当剩余连接数小于总连接数的八分之一时，其值才大于0，而且剩余的连接数越小，这个值越大。再看第二段代码，
+当ngx_accept_disabled大于0时，不会去尝试获取accept_mutex锁，并且将ngx_accept_disabled减1，于是，每次执行到此处时，都会去减1，直到小于0。不去获取
+accept_mutex锁，就是等于让出获取连接的机会，很显然可以看出，当空余连接越少时，ngx_accept_disable越大，于是让出的机会就越多，这样其它进程获取锁的
+机会也就越大。不去accept，自己的连接就控制下来了，其它进程的连接池就会得到利用，这样，nginx就控制了多进程间连接的平衡了。
+13.以当nginx设置了keepalive等待下一次的请求时，同时也会设置一个最大等待时间，这个时间是通过选项keepalive_timeout来配置的，如果配置为0，则表示关掉keepalive，
+此时，http版本无论是1.1还是1.0，客户端的connection不管是close还是keepalive，都会强制为close。
+14.如果服务端最后的决定是keepalive打开，那么在响应的http头里面，也会包含有connection头域，其值是”Keep-Alive”，否则就是”Close”。如果connection值为close，那么
+在nginx响应完数据后，会主动关掉连接。所以，对于请求量比较大的nginx来说，关掉keepalive最后会产生比较多的time-wait状态的socket。一般来说，当客户端的一次访问，
+需要多次访问同一个server时，打开keepalive的优势非常大，比如图片服务器，通常一个网页会包含很多个图片。打开keepalive也会大量减少time-wait的数量。
+15.pipeline
+在http1.1中，引入了一种新的特性，即pipeline。那么什么是pipeline呢？pipeline其实就是流水线作业，它可以看作为keepalive的一种升华，因为pipeline也是基于长连接的，
+目的就是利用一个连接做多次请求。如果客户端要提交多个请求，对于keepalive来说，那么第二个请求，必须要等到第一个请求的响应接收完全后，才能发起，这和TCP的停止等
+待协议是一样的，得到两个响应的时间至少为2*RTT。而对pipeline来说，客户端不必等到第一个请求处理完后，就可以马上发起第二个请求。得到两个响应的时间可能能够达到
+1*RTT。nginx是直接支持pipeline的，但是，nginx对pipeline中的多个请求的处理却不是并行的，依然是一个请求接一个请求的处理，只是在处理第一个请求的时候，客户端就
+可以发起第二个请求。这样，nginx利用pipeline减少了处理完一个请求后，等待第二个请求的请求头数据的时间。其实nginx的做法很简单，前面说到，nginx在读取数据时，会
+将读取的数据放到一个buffer里面，所以，如果nginx在处理完前一个请求后，如果发现buffer里面还有数据，就认为剩下的数据是下一个请求的开始，然后就接下来处理下一个
+请求，否则就设置keepalive。
+16.解决存在大量time_wait状态
+1）表示开启SYN Cookies。当出现SYN等待队列溢出时，启用cookies来处理，可防范少量SYN攻击。默认为0，表示关闭  
+net.ipv4.tcp_syncookies = 1  
+2）表示开启重用tcp连接。允许将TIME-WAIT sockets重新用于新的TCP连接。默认为0，表示关闭  
+net.ipv4.tcp_tw_reuse = 1  
+3）表示开启TCP连接中TIME-WAIT sockets的快速回收。默认为0，表示关闭  
+net.ipv4.tcp_tw_recycle = 1  
+4）表示如果套接字由本端要求关闭，这个参数决定了它保持在FIN-WAIT-2状态的时间    
+net.ipv4.tcp_fin_timeout = 30  
+5）/sbin/sysctl -p 生效
+17.lingering_close，字面意思就是延迟关闭，也就是说，当nginx要关闭连接时，并非立即关闭连接，而是先关闭tcp连接的写，再等待一段时间后再关掉连接的读
+18.kill -HUP pid，则是告诉nginx，从容地重启nginx，我们一般用这个信号来重启nginx，或重新加载配置，因为是从容地重启，因此服务是不中断的。./nginx -s reload，就是
+来重启nginx，./nginx -s stop，就是来停止nginx的运行。
+二、基本数据结构
+1.包含了字符串的封装以及字符串相关操作的api。nginx提供了一个带长度的字符串结构ngx_str_t
+typedef struct {
+    size_t      len;
+    u_char     *data;
+} ngx_str_t;
+在结构体当中，data指向字符串数据的第一个字符，字符串的结束用长度来表示，而不是由’\0’来表示结束。
+2.ngx_pool_t是一个非常重要的数据结构，在很多重要的场合都有使用，很多重要的数据结构也都在使用它。它提供了一种机制，帮助管理一系列的资源（如内存，文件等），
+使得对这些资源的使用和释放统一进行，免除了使用过程中考虑到对各种各样资源的什么时候释放，是否遗漏了释放的担心。
+typedef struct ngx_pool_s        ngx_pool_t;
+struct ngx_pool_s {
+    ngx_pool_data_t       d;
+    size_t                max;
+    ngx_pool_t           *current;
+    ngx_chain_t          *chain;
+    ngx_pool_large_t     *large;
+    ngx_pool_cleanup_t   *cleanup;
+    ngx_log_t            *log;
+};
+3.ngx_array_t是nginx内部使用的数组结构。
+typedef struct ngx_array_s     ngx_array_t;
+struct ngx_array_s {
+    void        *elts;
+    ngx_uint_t   nelts;
+    size_t       size;
+    ngx_uint_t   nalloc;
+    ngx_pool_t  *pool;
+};
+
+elts:	指向实际的数据存储区域。
+nelts:	数组实际元素个数。
+size:	数组单个元素的大小，单位是字节。
+nalloc:	数组的容量。表示该数组在不引发扩容的前提下，可以最多存储的元素的个数。当nelts增长到达nalloc 时，如果再往此数组中存储元素，则会引发数组的扩容。
+        数组的容量将会扩展到原有容量的2倍大小。实际上是分配新的一块内存，新的一块内存的大小是原有内存大小的2倍。原有的数据会被拷贝到新的一块内存中。
+pool:	该数组用来分配内存的内存池
+4.ngx_hash_t是nginx自己的hash表的实现，ngx_hash_t使用的是最常用的一种，也就是开链法，这也是STL中的hash表使用的方法。
+但是ngx_hash_t的实现又有其几个显著的特点:
+1）ngx_hash_t不像其他的hash表的实现，可以插入删除元素，它只能一次初始化，就构建起整个hash表以后，既不能再删除，也不能在插入元素了。
+2）ngx_hash_t的开链并不是真的开了一个链表，实际上是开了一段连续的存储空间，几乎可以看做是一个数组。这是因为ngx_hash_t在初始化的时候，
+会经历一次预计算的过程，提前把每个桶里面会有多少元素放进去给计算出来，这样就提前知道每个桶的大小了。那么就不需要使用链表，一段连续的
+存储空间就足够了。这也从一定程度上节省了内存的使用。
+5.nginx为了处理带有通配符的域名的匹配问题，实现了ngx_hash_wildcard_t这样的hash表。他可以支持两种类型的带有通配符的域名。
+一个ngx_hash_wildcard_t类型的hash表只能包含通配符在前的key或者是通配符在后的key。不能同时包含两种类型的通配符的key
+6.nginx的filter模块在处理从别的filter模块或者是handler模块传递过来的数据（实际上就是需要发送给客户端的http response）。这个传递过来的数据是以一个链表
+的形式(ngx_chain_t)。而且数据可能被分多次传递过来。也就是多次调用filter的处理函数，以不同的ngx_chain_t。
+typedef struct ngx_chain_s       ngx_chain_t;
+
+struct ngx_chain_s {
+    ngx_buf_t    *buf;
+    ngx_chain_t  *next;
+};
+7.这个ngx_buf_t就是这个ngx_chain_t链表的每个节点的实际数据。该结构实际上是一种抽象的数据结构，它代表某种具体的数据。这个数据可能是指向内存中的某个缓冲区，
+也可能指向一个文件的某一部分，也可能是一些纯元数据（元数据的作用在于指示这个链表的读取者对读取的数据进行不同的处理）。
+8.ngx_list_t顾名思义，看起来好像是一个list的数据结构。这样的说法，算对也不算对。因为它符合list类型数据结构的一些特点，比如可以添加元素，实现自增长，不会
+像数组类型的数据结构，受到初始设定的数组容量的限制，并且它跟我们常见的list型数据结构也是一样的，内部实现使用了一个链表。
+typedef struct {
+    ngx_list_part_t  *last;
+    ngx_list_part_t   part;
+    size_t            size;
+    ngx_uint_t        nalloc;
+    ngx_pool_t       *pool;
+} ngx_list_t;
+9.ngx_queue_t是nginx中的双向链表，不同于教科书中将链表节点的数据成员声明在链表节点的结构体中，ngx_queue_t只是声明了前向和后向指针。在使用的时候，我们首先需要定义一个哨兵节点(对于后续具体存放数据的节点，我们称之为数据节点)
+typedef struct ngx_queue_s ngx_queue_t;
+
+struct ngx_queue_s {
+    ngx_queue_t  *prev;
+    ngx_queue_t  *next;
+};
+
+三、Linux配置系统
+1.nginx的配置系统由一个主配置文件和其他一些辅助的配置文件构成。这些配置文件均是纯文本文件，全部位于nginx安装目录下的conf目录下。
+2.配置指令是一个字符串，可以用单引号或者双引号括起来，也可以不括。但是如果配置指令包含空格，一定要引起来。
+3.指令参数
+指令的参数使用一个或者多个空格或者TAB字符与指令分开。指令的参数有一个或者多个TOKEN串组成。TOKEN串之间由空格或者TAB键分隔。
+TOKEN串分为简单字符串或者是复合配置块。复合配置块即是由大括号括起来的一堆内容。一个复合配置块中可能包含若干其他的配置指令。
+如果一个配置指令的参数全部由简单字符串构成，也就是不包含复合配置块，那么我们就说这个配置指令是一个简单配置项，否则称之为复杂配置项。
+对于简单配置，配置项的结尾使用分号结束。对于复杂配置项，包含多个TOKEN串的，一般都是简单TOKEN串放在前面，复合配置块一般位于最后，而且其结尾，并不需要再添加分号。
+4.指令上下文
+当前nginx支持的几个指令上下文：
+main:	nginx在运行时与具体业务功能（比如http服务或者email服务代理）无关的一些参数，比如工作进程数，运行的身份等。
+http:	与提供http服务相关的一些配置参数。例如：是否使用keepalive啊，是否使用gzip进行压缩等。
+server:	http服务上支持若干虚拟主机。每个虚拟主机一个对应的server配置项，配置项里面包含该虚拟主机相关的配置。在提供mail服务的代理时，也可以建立若干server.
+         每个server通过监听的地址来区分。
+location:	http服务中，某些特定的URL对应的一系列配置项。
+mail:	实现email相关的SMTP/IMAP/POP3代理时，共享的一些配置项（因为可能实现多个代理，工作在多个监听地址上）。
+5.nginx提供了web服务器的基础功能，同时提供了web服务反向代理，email服务反向代理功能。
+6.模块分类
+event module:	搭建了独立于操作系统的事件处理机制的框架，及提供了各具体事件的处理。包括ngx_events_module， ngx_event_core_module和ngx_epoll_module等。
+	            nginx具体使用何种事件处理模块，这依赖于具体的操作系统和编译选项。
+phase handler:	此类型的模块也被直接称为handler模块。主要负责处理客户端请求并产生待响应内容，比如ngx_http_static_module模块，负责客户端的静态页面请求处理
+                并将对应的磁盘文件准备为响应内容输出。
+output filter:	也称为filter模块，主要是负责对输出的内容进行处理，可以对输出进行修改。例如，可以实现对输出的所有html页面增加预定义的footbar一类的工作，
+                或者对输出的图片的URL进行替换之类的工作。
+upstream:	    upstream模块实现反向代理的功能，将真正的请求转发到后端服务器上，并从后端服务器上读取响应，发回客户端。upstream模块是一种特殊的handler，
+                只不过响应内容不是真正由自己产生的，而是从后端服务器上读取的。
+load-balancer:	负载均衡模块，实现特定的算法，在众多的后端服务器中，选择一个服务器出来作为某个请求的转发服务器。
+7.nginx的请求处理--一个简单处理流程如下：
+	1.操作系统提供的机制（例如epoll, kqueue等）产生相关的事件。
+	2.接收和处理这些事件，如是接受到数据，则产生更高层的request对象。
+	3.处理request的header和body。
+	4.产生响应，并发送回客户端。
+	5.完成request的处理。
+	6.重新初始化定时器及其他事件。
+8.HTTP Request处理阶段
+1）NGX_HTTP_POST_READ_PHASE:
+ 	读取请求内容阶段
+2）NGX_HTTP_SERVER_REWRITE_PHASE:
+ 	Server请求地址重写阶段
+3）NGX_HTTP_FIND_CONFIG_PHASE:
+ 	配置查找阶段:
+4）NGX_HTTP_REWRITE_PHASE:
+ 	Location请求地址重写阶段
+5）NGX_HTTP_POST_REWRITE_PHASE:
+ 	请求地址重写提交阶段
+6）NGX_HTTP_PREACCESS_PHASE:
+ 	访问权限检查准备阶段
+7）NGX_HTTP_ACCESS_PHASE:
+ 	访问权限检查阶段
+8）NGX_HTTP_POST_ACCESS_PHASE:
+ 	访问权限检查提交阶段
+9）NGX_HTTP_TRY_FILES_PHASE:
+ 	配置项try_files处理阶段
+10）NGX_HTTP_CONTENT_PHASE:
+ 	内容产生阶段
+11）NGX_HTTP_LOG_PHASE:
+ 	日志模块处理阶段
+
+四、handler模块：接受来自客户端的请求并产生输出的模块
+1.handler模块必须提供一个真正的处理函数，这个函数负责对来自客户端请求的真正处理。这个函数的处理，既可以选择自己直接生成内容，也可以选择拒绝处理，由后续的handler去进行处理，
+或者是选择丢给后续的filter进行处理。来看一下这个函数的原型申明。
+typedef ngx_int_t (*ngx_http_handler_pt)(ngx_http_request_t *r);
+r是http请求。里面包含请求所有的信息，这里不详细说明了，可以参考别的章节的介绍。 该函数处理成功返回NGX_OK，处理发生错误返回NGX_ERROR，拒绝处理（留给后续的handler进行处理）
+返回NGX_DECLINE。 返回NGX_OK也就代表给客户端的响应已经生成好了，否则返回NGX_ERROR就发生错误了。
+2.handler模块真正的处理函数通过两种方式挂载到处理过程中，一种方式就是按处理阶段挂载;另外一种挂载方式就是按需挂载。
+3.一般情况下，我们自定义的模块，大多数是挂载在NGX_HTTP_CONTENT_PHASE阶段的。挂载的动作一般是在模块上下文调用的postconfiguration函数中。
+注意：有几个阶段是特例，它不调用挂载地任何的handler，也就是你就不用挂载到这几个阶段了：
+NGX_HTTP_FIND_CONFIG_PHASE   //配置查找阶段
+NGX_HTTP_POST_ACCESS_PHASE   //访问权限检查提交阶段
+NGX_HTTP_POST_REWRITE_PHASE  //请求地址重写提交阶段
+NGX_HTTP_TRY_FILES_PHASE     //配置项try_files处理阶段
+所以其实真正是有7个phase你可以去挂载handler。
+4.按需挂载--content handler
+当一个请求进来以后，nginx从NGX_HTTP_POST_READ_PHASE阶段开始依次执行每个阶段中所有handler。执行到 NGX_HTTP_CONTENT_PHASE阶段的时候，如果这个location有一个对应的content handler模块，
+那么就去执行这个content handler模块真正的处理函数。否则继续依次执行NGX_HTTP_CONTENT_PHASE阶段中所有content phase handlers，直到某个函数处理返回NGX_OK或者NGX_ERROR。
+换句话说，当某个location处理到NGX_HTTP_CONTENT_PHASE阶段时，如果有content handler模块，那么NGX_HTTP_CONTENT_PHASE挂载的所有content phase handlers都不会被执行了。
+但是使用这个方法挂载上去的handler有一个特点是必须在NGX_HTTP_CONTENT_PHASE阶段才能执行到。如果你想自己的handler在更早的阶段执行，那就不要使用这种挂载方式。
+那么在什么情况会使用这种方式来挂载呢？一般情况下，某个模块对某个location进行了处理以后，发现符合自己处理的逻辑，而且也没有必要再调用NGX_HTTP_CONTENT_PHASE阶段的
+其它handler进行处理的时候，就动态挂载上这个handler。
+5.handler模块编写的步骤
+1).编写模块基本结构。包括模块的定义，模块上下文结构，模块的配置结构等。
+2).实现handler的挂载函数。根据模块的需求选择正确的挂载方式。
+3).编写handler处理函数。模块的功能主要通过这个函数来完成。
+6.config文件的编写
+对于开发一个模块，我们是需要把这个模块的C代码组织到一个目录里，同时需要编写一个config文件。这个config文件的内容就是告诉nginx的编译脚本，该如何进行编译。
+ngx_addon_name=ngx_http_hello_module
+HTTP_MODULES="$HTTP_MODULES ngx_http_hello_module"
+NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ngx_addon_dir/ngx_http_hello_module.c"
+7.编译
+对于模块的编译，nginx并不像apache一样，提供了单独的编译工具，可以在没有apache源代码的情况下来单独编译一个模块的代码。nginx必须去到nginx的源代码目录里，
+通过configure指令的参数，来进行编译。下面看一下hello module的configure指令：
+./configure –prefix=/usr/local/nginx-1.3.1 –add-module=/home/jizhao/open_source/book_module
+我写的这个示例模块的代码和config文件都放在/home/jizhao/open_source/book_module这个目录下。
+8.使用
+使用一个模块需要根据这个模块定义的配置指令来做。比如我们这个简单的hello handler module的使用就很简单。在我的测试服务器的配置文件里，就是在http里面的
+默认的server里面加入如下的配置：
+location /test {
+                hello_string jizhao;
+                hello_counter on;
+}
+
+五、过滤模块：是过滤响应头和内容的模块，可以对回复的头和内容进行处理。它的处理时间在获取回复内容之后，向用户发送响应之前
+1.它的处理过程分为两个阶段，过滤HTTP回复的头部和主体，在这两个阶段可以分别对头部和主体进行修改。
+2.过滤模块的调用是有顺序的，它的顺序在编译的时候就决定了。
+3.在过滤模块中，所有输出的内容都是通过一条单向链表所组成。这种单向链表的设计，正好应和了Nginx流式的输出模式。每次Nginx都是读到一部分的内容，就放到链表，然后
+输出出去。这种设计的好处是简单，非阻塞，但是相应的问题就是跨链表的内容操作非常麻烦，如果需要跨链表，很多时候都只能缓存链表的内容。
+4.响应头过滤函数主要的用处就是处理HTTP响应的头，可以根据实际情况对于响应头进行修改或者添加删除。响应头过滤函数先于响应体过滤函数，而且只调用一次，所以一般可作过滤模块的初始化工作。
+5.该函数向客户端发送回复的时候调用，然后按前一节所述的执行顺序。该函数的返回值一般是NGX_OK，NGX_ERROR和NGX_AGAIN，分别表示处理成功，失败和未完成。
+6.过滤模块顺序
+filter module	                                   description
+ngx_http_not_modified_filter_module	默认打开，如果请求的if-modified-since等于回复的last-modified间值，说明回复没有变化，清空所有回复的内容，返回304。
+ngx_http_range_body_filter_module	默认打开，只是响应体过滤函数，支持range功能，如果请求包含range请求，那就只发送range请求的一段内容。
+ngx_http_copy_filter_module	始终打开，只是响应体过滤函数， 主要工作是把文件中内容读到内存中，以便进行处理。
+ngx_http_headers_filter_module	始终打开，可以设置expire和Cache-control头，可以添加任意名称的头
+ngx_http_userid_filter_module	默认关闭，可以添加统计用的识别用户的cookie。
+ngx_http_charset_filter_module	默认关闭，可以添加charset，也可以将内容从一种字符集转换到另外一种字符集，不支持多字节字符集。
+ngx_http_ssi_filter_module	默认关闭，过滤SSI请求，可以发起子请求，去获取include进来的文件
+ngx_http_postpone_filter_module	始终打开，用来将子请求和主请求的输出链合并
+ngx_http_gzip_filter_module	默认关闭，支持流式的压缩内容
+ngx_http_range_header_filter_module	默认打开，只是响应头过滤函数，用来解析range头，并产生range响应的头。
+ngx_http_chunked_filter_module	默认打开，对于HTTP/1.1和缺少content-length的回复自动打开。
+ngx_http_header_filter_module	始终打开，用来将所有header组成一个完整的HTTP头。
+ngx_http_write_filter_module	始终打开，将输出链拷贝到r->out中，然后输出内容。
+所有第三方的模块只能加入到copy_filter和headers_filter模块之间执行。
+7.响应体过滤函数是过滤响应主体的函数。ngx_http_top_body_filter这个函数每个请求可能会被执行多次，它的入口函数是ngx_http_output_filter。
+8.Nginx过滤模块一大特色就是可以发出子请求，也就是在过滤响应内容的时候，你可以发送新的请求，Nginx会根据你调用的先后顺序，将多个回复的内容拼接成正常的响应主体。
+一个简单的例子可以参考addition模块。Nginx是如何保证父请求和子请求的顺序呢？当Nginx发出子请求时，就会调用ngx_http_subrequest函数，将子请求插入父请求
+的r->postponed链表中。子请求会在主请求执行完毕时获得依次调用。子请求同样会有一个请求所有的生存期和处理过程，也会进入过滤模块流程。关键点是在postpone_filter模
+块中，它会拼接主请求和子请求的响应内容。r->postponed按次序保存有父请求和子请求，它是一个链表，如果前面一个请求未完成，那后一个请求内容就不会输出。当前一个请
+求完成时并输出时，后一个请求才可输出，当所有的子请求都完成时，所有的响应内容也就输出完毕了。
+9.Nginx过滤模块涉及到的结构体，主要就是chain和buf，非常简单。在日常的过滤模块中，这两类结构使用非常频繁，Nginx采用类似freelist重复利用的原则，将使用完毕
+的chain或者buf结构体，放置到一个固定的空闲链表里，以待下次使用。
+10.过滤内容的缓存
+由于Nginx设计流式的输出结构，当我们需要对响应内容作全文过滤的时候，必须缓存部分的buf内容。该类过滤模块往往比较复杂，比如sub，ssi，gzip等模块。这类模块的设计非常灵活，我简单讲一下设计原则：
+1）.输入链in需要拷贝操作，经过缓存的过滤模块，输入输出链往往已经完全不一样了，所以需要拷贝，通过ngx_chain_add_copy函数完成。2
+2）一般有自己的free和busy缓存链表池，可以提高buf分配效率。
+3）如果需要分配大块内容，一般分配固定大小的内存卡，并设置recycled标志，表示可以重复利用。
+4）原有的输入buf被替换缓存时，必须将其buf->pos设为buf->last，表明原有的buf已经被输出完毕。或者在新建立的buf，将buf->shadow指向旧的buf，以便输出完毕时及时释放旧的buf。
+
+六、upstream模块:使nginx跨越单机的限制，完成网络数据的接收、处理和转发
+1.从本质上说，upstream属于handler，只是他不产生自己的内容，而是通过请求后端服务器得到内容，所以才称为upstream（上游）。请求并取得响应内容的整个过程已经被封装
+到nginx内部，所以upstream模块只需要开发若干回调函数，完成构造请求和解析响应等具体的工作。
+2.upstream模块处理流程：
+1）创建upstream数据结构；
+2）设置模块的tag和schema。schema现在只会用于日志，tag会用于buf_chain管理；
+3）设置upstream的后端服务器列表数据结构；
+4）设置upstream回调函数；
+5）创建并设置upstream环境数据结构；
+6）完成upstream初始化并进行收尾工作。
+3.upstream模块是从handler模块发展而来，指令系统和模块生效方式与handler模块无异。不同之处在于，upstream模块在handler函数中设置众多回调函数。实际工作都是由这些
+回调函数完成的。每个回调函数都是在upstream的某个固定阶段执行，各司其职，大部分回调函数一般不会真正用到。upstream最重要的回调函数是create_request、process_header和input_filter，
+他们共同实现了与后端服务器的协议的解析部分。
+
+七、负载均衡模块：负载均衡模块用于从”upstream”指令定义的后端主机列表中选取一台主机。nginx先使用负载均衡模块找到一台主机，再使用upstream模块实现与这台主机的交互。
+1.负载均衡模块的配置区集中在upstream{}块中。负载均衡模块的回调函数体系是以init_upstream为起点，经历init_peer，最终到达peer.get和peer.free。其中init_peer负责
+建立每个请求使用的server列表，peer.get负责从server列表中选择某个server（一般是不重复选择），而peer.free负责server释放前的资源释放工作。
+
+八、启动模块
+1）时间、正则、错误日志、ssl等初始化
+2）读入命令行参数
+3）OS相关初始化
+4）读入并解析配置
+5）核心模块初始化
+6)创建各种暂时文件和目录
+7)创建共享内存
+8)打开listen的端口
+9)所有模块初始化
+10)启动worker进程
+
+九、event模块
+1.Nginx是以event（事件）处理模型为基础的模块。它为了支持跨平台，抽象出了event模块。它支持的event处理类型有：AIO（异步IO），/dev/poll（Solaris 和Unix特有），
+epoll（Linux特有），eventport（Solaris 10特有），kqueue（BSD特有），poll，rtsig（实时信号），select等。
+2.event模块的主要功能就是，监听accept后建立的连接，对读写事件进行添加删除。事件处理模型和Nginx的非阻塞IO模型结合在一起使用。当IO可读可写的时候，相应的读写
+事件就会被唤醒，此时就会去处理事件的回调函数。特别对于Linux，Nginx大部分event采用epoll EPOLLET（边沿触发）的方法来触发事件，只有listen端口的读事件
+是EPOLLLT（水平触发）。对于边沿触发，如果出现了可读事件，必须及时处理，否则可能会出现读事件不再触发，连接饿死的情况。
+
+十、accept锁
+Nginx是多进程程序，80端口是各进程所共享的，多进程同时listen 80端口，势必会产生竞争，也产生了所谓的“惊群”效应。当内核accept一个连接时，会唤醒所有等待中的进程，
+但实际上只有一个进程能获取连接，其他的进程都是被无效唤醒的。所以Nginx采用了自有的一套accept加锁机制，避免多个进程同时调用accept。Nginx多进程的锁在底层默认是
+通过CPU自旋锁来实现。如果操作系统不支持自旋锁，就采用文件锁。
+
+除了加锁，Nginx也对各进程的请求处理的均衡性作了优化，也就是说，如果在负载高的时候，进程抢到的锁过多，会导致这个进程被禁止接受请求一段时间。
+
+十一、定时器
+Nginx在需要用到超时的时候，都会用到定时器机制。比如，建立连接以后的那些读写超时。Nginx使用红黑树来构造定期器，红黑树是一种有序的二叉平衡树，其查找插入和删除
+的复杂度都为O(logn)，所以是一种比较理想的二叉树。定时器的机制就是，二叉树的值是其超时时间，每次查找二叉树的最小值，如果最小值已经过期，就删除该节点，
+然后继续查找，直到所有超时节点都被删除。
+
+十二、nginx源码结构
+.
+├── auto            自动检测系统环境以及编译相关的脚本
+│   ├── cc          关于编译器相关的编译选项的检测脚本
+│   ├── lib         nginx编译所需要的一些库的检测脚本
+│   ├── os          与平台相关的一些系统参数与系统调用相关的检测
+│   └── types       与数据类型相关的一些辅助脚本
+├── conf            存放默认配置文件，在make install后，会拷贝到安装目录中去
+├── contrib         存放一些实用工具，如geo配置生成工具（geo2nginx.pl）
+├── html            存放默认的网页文件，在make install后，会拷贝到安装目录中去
+├── man             nginx的man手册
+└── src             存放nginx的源代码
+    ├── core        nginx的核心源代码，包括常用数据结构的定义，以及nginx初始化运行的核心代码如main函数
+    ├── event       对系统事件处理机制的封装，以及定时器的实现相关代码
+    │   └── modules 不同事件处理方式的模块化，如select、poll、epoll、kqueue等
+    ├── http        nginx作为http服务器相关的代码
+    │   └── modules 包含http的各种功能模块
+    ├── mail        nginx作为邮件代理服务器相关的代码
+    ├── misc        一些辅助代码，测试c++头的兼容性，以及对google_perftools的支持
+    └── os          主要是对各种不同体系统结构所提供的系统函数的封装，对外提供统一的系统调用接口
+十三、内存池：所以在Nginx使用内存池时总是只申请,不释放,使用完毕后直接destroy整个内存池。
+十四、nginx的请求处理
+这里还会做一些基本的连接初始化工作：
+1, 首先给该连接分配一个内存池，初始大小默认为256字节，可通过connection_pool_size指令设置；
+2, 分配日志结构，并保存在其中，以便后续的日志系统使用；
+3, 初始化连接相应的io收发函数，具体的io收发函数和使用的事件模型及操作系统相关；
+4, 分配一个套接口地址（sockaddr），并将accept得到的对端地址拷贝在其中，保存在sockaddr字段；
+5, 将本地套接口地址保存在local_sockaddr字段，因为这个值是从监听结构ngx_listening_t中可得，而监听结构中保存的只是配置文件中设置的监听地址，但是配置的监听地址可能是
+通配符*，即监听在所有的地址上，所以连接中保存的这个值最终可能还会变动，会被确定为真正的接收地址；
+6, 将连接的写事件设置为已就绪，即设置ready为1，nginx默认连接第一次为可写；
+7, 如果监听套接字设置了TCP_DEFER_ACCEPT属性，则表示该连接上已经有数据包过来，于是设置读事件为就绪；
+8, 将sockaddr字段保存的对端地址格式化为可读字符串，并保存在addr_text字段；
+最后调用ngx_http_init_connection函数初始化该连接结构的其他部分。
+
+
+
+补充：
+1.Nginx 提供了一个 accept_mutex 这个东西，这是一个加在accept上的一把共享锁。即每个 worker 进程在执行 accept 之前都需要先获取锁，获取不到就放弃执行 accept()。有了这把
+锁之后，同一时刻，就只会有一个进程去 accpet()，这样就不会有惊群问题了。accept_mutex 是一个可控选项，我们可以显示地关掉，默认是打开的。
+
+
+2.多进程与多线程的区别：
+ 
+对比维度                                   多进程                                           多线程                                                    总结
+
+数据共享、同步          数据共享复杂，需要用IPC；数据是分开的，同步简单   因为共享进程数据，数据共享简单，但也是因为这个原因导致同步复杂            各有优势
+
+内存、CPU               占用内存多，切换复杂，CPU利用率低                        占用内存少，切换简单，CPU利用率高                                  线程占优
+
+创建销毁、切换           创建销毁、切换复杂，速度慢                                创建销毁、切换简单，速度很快                                     线程占优
+
+编程、调试                  编程简单，调试简单                                          编程复杂，调试复杂                                          进程占优
+
+可靠性                      进程间不会互相影响                                   一个线程挂掉将导致整个进程挂掉                                     进程占优
+
+分布式        适应于多核、多机分布式；如果一台机器不够，扩展到多台机器比较简单        适应于多核分布式                                              进程占优
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

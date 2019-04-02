@@ -1,0 +1,47 @@
+cout<<"次数据转化成十进制为： "<<dec<<a<<endl;
+cout<<"次数据转化成八进制为： "<<oct<<a<<endl;
+cout<<"次数据转化成十六进制为： "<<hex<<a<<endl;
+1.十进制转化为二进制
+#include<iostream>
+#include<vector>
+
+#include<algorithm>
+
+using namespace std;
+
+void bit(int n) {
+	
+vector<int> a;
+	
+int b;
+	
+while (n > 0)
+	
+{
+		
+b = n % 2;
+		
+a.push_back(b);
+		
+n = n / 2;
+	
+}
+	
+reverse(a.begin(), a.end());
+for (size_t i = 0; i < a.size(); ++i)
+{
+		
+cout << a[i];
+}
+	
+cout << endl;
+
+
+}
+
+int main()
+{
+	int a;
+	cin >> a;
+         bit(a);
+}
